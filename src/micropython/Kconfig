@@ -58,5 +58,3 @@ config MICROPY_USB_DEVICE_PID
 	default 0x0001
 
 endmenu # MicroPython Options
-
-source "Kconfig.zephyr"
