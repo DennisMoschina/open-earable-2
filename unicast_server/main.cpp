@@ -49,6 +49,7 @@ LOG_MODULE_REGISTER(main, CONFIG_MAIN_LOG_LEVEL);
 
 /* STEP 5.4 - Include header for USB */
 #include <zephyr/usb/usb_device.h>
+#include "../src/micropython/micropython.h"
 
 int main(void) {
 	int ret;
@@ -113,6 +114,8 @@ int main(void) {
 	// error test
 	//long *a = nullptr;
 	//*a = 10;
+
+	init_mp();
 
 	return 0;
 }

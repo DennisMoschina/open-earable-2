@@ -28,14 +28,3 @@
 
 int real_main(void);
 int mp_console_init(void);
-
-int main(void) {
-    #ifdef CONFIG_CONSOLE_SUBSYS
-    mp_console_init();
-    #else
-    zephyr_getchar_init();
-    #endif
-    real_main();
-
-    return 0;
-}
