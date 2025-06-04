@@ -63,6 +63,7 @@ rsource "src/modules/Kconfig"
 rsource "src/utils/Kconfig"
 rsource "src/SensorManager/Kconfig"
 rsource "src/Battery/Kconfig"
+rsource "src/micropython/Kconfig"
 
 #----------------------------------------------------------------------------#
 menu "Logging"

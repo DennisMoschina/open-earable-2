@@ -28,7 +28,7 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(micropython)
 
 set(MICROPY_PORT_DIR    ${CMAKE_CURRENT_SOURCE_DIR})
-set(MICROPY_DIR         ${MICROPY_PORT_DIR}/../..)
+set(MICROPY_DIR         ${MICROPY_PORT_DIR}/../../micropython)
 set(MICROPY_TARGET      micropython)
 
 include(${MICROPY_DIR}/py/py.cmake)
@@ -40,6 +40,7 @@ if (CONFIG_MICROPY_FROZEN_MODULES)
 endif()
 
 set(MICROPY_SOURCE_PORT
+    micropython.c
     main.c
     help.c
     machine_i2c.c
@@ -101,6 +102,7 @@ zephyr_library_include_directories(
     ${MICROPY_INC_CORE}
     ${MICROPY_PORT_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/../..
 )
 
 zephyr_library_compile_options(
@@ -126,7 +128,7 @@ add_dependencies(BUILD_VERSION_HEADER zephyr_generated_headers)
 add_dependencies(${MICROPY_TARGET} zephyr_generated_headers)
 
 target_sources(app PRIVATE
-    src/zephyr_start.c
+    # src/zephyr_start.c
     src/zephyr_getchar.c
     src/usbd.c
 )
