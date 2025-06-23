@@ -31,7 +31,7 @@
 #include "extmod/vfs.h"
 #endif
 
-#ifdef CONFIG_DISK_ACCESS
+#ifdef CONFIG_MP_DISK_ACCESS
 #include <zephyr/storage/disk_access.h>
 #endif
 
@@ -39,7 +39,7 @@
 #include <zephyr/storage/flash_map.h>
 #endif
 
-#ifdef CONFIG_DISK_ACCESS
+#ifdef CONFIG_MP_DISK_ACCESS
 typedef struct _zephyr_disk_access_obj_t {
     mp_obj_base_t base;
     const char *pdrv;
@@ -136,9 +136,9 @@ MP_DEFINE_CONST_OBJ_TYPE(
     print, zephyr_disk_access_print,
     locals_dict, &zephyr_disk_access_locals_dict
     );
-#endif // CONFIG_DISK_ACCESS
+#endif // CONFIG_MP_DISK_ACCESS
 
-#ifdef CONFIG_FLASH_MAP
+#if defined(CONFIG_FLASH_MAP) && MICROPY_VFS
 
 #define FLASH_AREA_DEFINE_LABEL(part) CONCAT(MP_QSTR_ID_, DT_STRING_TOKEN(part, label))
 #define FLASH_AREA_DEFINE_NB(part) CONCAT(MP_QSTR_ID_, DT_FIXED_PARTITION_ID(part))

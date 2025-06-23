@@ -57,4 +57,11 @@ config MICROPY_USB_DEVICE_PID
 	hex "USB PID"
 	default 0x0001
 
+config MP_DISK_ACCESS
+	bool "Enable disk access"
+	default DISK_ACCESS
+	help
+	  Enable disk access for the MicroPython port. This allows the port to
+	  read and write files on a disk, such as an SD card or USB drive.
+
 endmenu # MicroPython Options
