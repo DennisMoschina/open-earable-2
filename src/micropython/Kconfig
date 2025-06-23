@@ -58,10 +58,18 @@ config MICROPY_USB_DEVICE_PID
 	default 0x0001
 
 config MP_DISK_ACCESS
-	bool "Enable disk access"
+	bool "Enable disk access for MicroPython"
 	default DISK_ACCESS
 	help
 	  Enable disk access for the MicroPython port. This allows the port to
 	  read and write files on a disk, such as an SD card or USB drive.
+
+config MP_DISK_DRIVER_SDMMC
+	bool "Enable SDMMC disk driver for MicroPython"
+	default DISK_DRIVER_SDMMC
+	depends on MP_DISK_ACCESS
+	help
+	  Enable the SDMMC disk driver for MicroPython. This allows the port to
+	  access SD cards using the SDMMC interface.
 
 endmenu # MicroPython Options
