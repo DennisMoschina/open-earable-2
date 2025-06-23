@@ -104,7 +104,11 @@
 #define MICROPY_FLOAT_IMPL (MICROPY_FLOAT_IMPL_FLOAT)
 #define MICROPY_PY_BUILTINS_COMPLEX (0)
 #define MICROPY_ENABLE_SCHEDULER    (0)
+#if CONFIG_MP_DISK_ACCESS
 #define MICROPY_VFS                 (1)
+#else
+#define MICROPY_VFS                 (0)
+#endif
 #define MICROPY_READER_VFS          (MICROPY_VFS)
 
 // fatfs configuration used in ffconf.h
