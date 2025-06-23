@@ -104,7 +104,7 @@ static void vfs_init(void) {
     const char *mount_point_str = NULL;
     int ret = 0;
 
-    #ifdef CONFIG_DISK_DRIVER_SDMMC
+    #ifdef CONFIG_MP_DISK_DRIVER_SDMMC
     #if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(4, 0, 0)
     mp_obj_t args[] = { mp_obj_new_str_from_cstr(DT_PROP(DT_INST(0, zephyr_sdmmc_disk), disk_name)) };
     #else
