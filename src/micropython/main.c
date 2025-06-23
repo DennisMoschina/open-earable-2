@@ -61,6 +61,9 @@
 #include "modmachine.h"
 #include "modzephyr.h"
 
+#include "zephyr/logging/log.h"
+LOG_MODULE_DECLARE(micropython);
+
 static char heap[MICROPY_HEAP_SIZE];
 
 #if defined(CONFIG_USB_DEVICE_STACK_NEXT)
@@ -220,6 +223,9 @@ MP_DEFINE_CONST_FUN_OBJ_KW(mp_builtin_open_obj, 1, mp_builtin_open);
 #endif
 
 MP_NORETURN void nlr_jump_fail(void *val) {
+    LOG_ERR("NLR jump failed with value %p, aborting thread...\n", val);
+    mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(val));
+    k_thread_abort(k_current_get());
     while (1) {
         ;
     }
