@@ -10,6 +10,8 @@ cmake_minimum_required(VERSION 3.20.0)
 add_compile_definitions(HEADSET=1)
 add_compile_definitions(GATEWAY=2)
 
+set(PM_STATIC_YML_FILE ${CMAKE_CURRENT_BINARY_DIR}/pm_static.yml)
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
 project(openearable_v2_1)
@@ -39,6 +41,9 @@ if (CONFIG_BT_BAP_UNICAST_SERVER)
 	add_subdirectory(unicast_server)
 endif()
 
+# target_include_directories(app PRIVATE ${ZEPHYR_BASE}/subsys/fs)
+# target_include_directories(app PRIVATE ${ZEPHYR_BASE}/zephyr/subsys/fs)
+# target_include_directories(app PRIVATE ${ZEPHYR_BASE}/../modules/fs/littlefs)
 
 # Include application events and configuration headers
 zephyr_library_include_directories(

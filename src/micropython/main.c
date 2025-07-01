@@ -56,10 +56,16 @@
 
 #if MICROPY_VFS
 #include "extmod/vfs.h"
+#include <zephyr/fs/fs.h>
+// #include <zephyr/fs/littlefs.h>
 #endif
 
 #include "modmachine.h"
 #include "modzephyr.h"
+
+#define MKFS_FS_TYPE FS_LITTLEFS
+#define MKFS_DEV_ID FIXED_PARTITION_ID(micropython_lfs)
+#define MKFS_FLAGS 0
 
 #include "zephyr/logging/log.h"
 LOG_MODULE_DECLARE(micropython);
@@ -98,6 +104,44 @@ void init_zephyr(void) {
 }
 
 #if MICROPY_VFS
+
+
+void print_flash_devices(void) {
+    const struct device *dev;
+    dev = DEVICE_DT_GET(DT_NODELABEL(mx25r64));
+    if (!device_is_ready(dev)) {
+        printk("MX25R64 not ready!\n");
+    } else {
+        printk("MX25R64 ready!\n");
+    }
+}
+
+void list_flash_partitions(void) {
+    const struct flash_area *fa;
+    for (int id = 0; id < 20; id++) {
+        if (flash_area_open(id, &fa) == 0) {
+            printk("Flash area %d: %s at 0x%lx size 0x%x\n", id, fa->fa_dev->name, fa->fa_off, fa->fa_size);
+            flash_area_close(fa);
+        }
+    }
+}
+
+int format_fs() {
+    print_flash_devices();
+    list_flash_partitions();
+    int rc;
+
+	rc = fs_mkfs(MKFS_FS_TYPE, (uintptr_t)MKFS_DEV_ID, NULL, MKFS_FLAGS);
+
+	if (rc < 0) {
+		LOG_ERR("Format failed with error %d", rc);
+		return 0;
+	}
+
+	LOG_INF("Format successful");
+	return 0;
+}
+
 static void vfs_init(void) {
     mp_obj_t bdev = NULL;
     mp_obj_t mount_point;
@@ -112,8 +156,8 @@ static void vfs_init(void) {
     #endif
     bdev = MP_OBJ_TYPE_GET_SLOT(&zephyr_disk_access_type, make_new)(&zephyr_disk_access_type, ARRAY_SIZE(args), 0, args);
     mount_point_str = "/sd";
-    #elif defined(CONFIG_FLASH_MAP) && FIXED_PARTITION_EXISTS(storage_partition)
-    mp_obj_t args[] = { MP_OBJ_NEW_SMALL_INT(FIXED_PARTITION_ID(storage_partition)), MP_OBJ_NEW_SMALL_INT(4096) };
+    #elif defined(CONFIG_FLASH_MAP) && FIXED_PARTITION_EXISTS(micropython_lfs)
+    mp_obj_t args[] = { MP_OBJ_NEW_SMALL_INT(FIXED_PARTITION_ID(micropython_lfs)), MP_OBJ_NEW_SMALL_INT(4096) };
     bdev = MP_OBJ_TYPE_GET_SLOT(&zephyr_flash_area_type, make_new)(&zephyr_flash_area_type, ARRAY_SIZE(args), 0, args);
     mount_point_str = "/flash";
     #endif
@@ -122,6 +166,21 @@ static void vfs_init(void) {
         mount_point = mp_obj_new_str_from_cstr(mount_point_str);
         ret = mp_vfs_mount_and_chdir_protected(bdev, mount_point);
         // TODO: if this failed, make a new file system and try to mount again
+        if (ret != 0) {
+            LOG_ERR("Mounting filesystem at %s failed with error %d", mount_point_str, ret);
+            ret = format_fs();
+            if (ret != 0) {
+                LOG_ERR("Formatting filesystem at %s failed with error %d", mount_point_str, ret);
+            } else {
+                ret = mp_vfs_mount_and_chdir_protected(bdev, mount_point);
+                if (ret != 0) {
+                    LOG_ERR("Mounting filesystem at %s after formatting failed with error %d", mount_point_str, ret);
+                }
+            }
+            return;
+        } else {
+            LOG_INF("Mounted filesystem at %s", mount_point_str);
+        }
     }
 }
 #endif // MICROPY_VFS
