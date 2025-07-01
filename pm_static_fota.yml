@@ -49,6 +49,11 @@ external_flash:
   size: 0x6e0000
   device: MX25R64
   region: external_flash
+micropython_lfs:
+  address: 0x120000
+  size: 0x100000
+  device: MX25R64
+  region: external_flash
 pcd_sram:
   address: 0x20000000
   size: 0x2000

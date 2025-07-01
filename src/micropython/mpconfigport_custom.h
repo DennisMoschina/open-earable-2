@@ -93,7 +93,7 @@
 #endif
 #define MICROPY_PY_BINASCII         (0)
 #define MICROPY_PY_HASHLIB          (0)
-#define MICROPY_PY_OS               (0)
+#define MICROPY_PY_OS               (1)
 #define MICROPY_PY_TIME             (0)
 #define MICROPY_PY_TIME_TIME_TIME_NS (0)
 #define MICROPY_PY_TIME_INCLUDEFILE "ports/zephyr/modtime.c"
@@ -103,7 +103,7 @@
 #define MICROPY_LONGINT_IMPL        (MICROPY_LONGINT_IMPL_MPZ)
 #define MICROPY_FLOAT_IMPL (MICROPY_FLOAT_IMPL_FLOAT)
 #define MICROPY_PY_BUILTINS_COMPLEX (0)
-#define MICROPY_ENABLE_SCHEDULER    (0)
+#define MICROPY_ENABLE_SCHEDULER    (1)
 #if CONFIG_MP_DISK_ACCESS
 #define MICROPY_VFS                 (1)
 #else
