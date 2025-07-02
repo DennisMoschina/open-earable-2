@@ -90,6 +90,8 @@ add_subdirectory(src/micropython)
 add_subdirectory(src/littlefs_manager)
 add_subdirectory(src/sensor_processing)
 add_subdirectory(src/micropython)
+# add_subdirectory(src/file_system_access)
+add_subdirectory(src/littlefs_manager)
 
 ## Cirrus Logic
 if (CONFIG_HW_CODEC_CIRRUS_LOGIC)
