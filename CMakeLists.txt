@@ -62,6 +62,8 @@ zephyr_library_include_directories(
     src/SD_Card/SD_Card_Manager
     src/SD_Card/CSV_Logger
     src/micropython
+    src/file_system_access
+    src/littlefs_manager
 )
 
 zephyr_library_include_directories(app PRIVATE
@@ -83,6 +85,8 @@ add_subdirectory(src/SD_Card/Benchmark)
 add_subdirectory(src/SD_Card/SD_Card_Manager)
 add_subdirectory(src/SD_Card/CSV_Logger)
 add_subdirectory(src/micropython)
+# add_subdirectory(src/file_system_access)
+add_subdirectory(src/littlefs_manager)
 
 ## Cirrus Logic
 if (CONFIG_HW_CODEC_CIRRUS_LOGIC)
