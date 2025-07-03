@@ -60,7 +60,7 @@
 #define MICROPY_PY_BUILTINS_HELP_TEXT zephyr_help_text
 #define MICROPY_PY_ARRAY            (0)
 #define MICROPY_PY_COLLECTIONS      (0)
-#define MICROPY_PY_CMATH            (0)
+#define MICROPY_PY_CMATH            (1)
 #define MICROPY_PY_IO               (0)
 #define MICROPY_PY_MICROPYTHON_MEM_INFO (0)
 #define MICROPY_PY_MACHINE          (0)
