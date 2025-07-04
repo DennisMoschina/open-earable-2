@@ -40,7 +40,7 @@
 #define MICROPY_MODULE_FROZEN_STR (0)
 #define MICROPY_MODULE_FROZEN (0)
 
-#define MICROPY_ENABLE_SOURCE_LINE  (0)
+#define MICROPY_ENABLE_SOURCE_LINE  (1)
 #define MICROPY_STACK_CHECK         (1)
 #define MICROPY_ENABLE_GC           (1)
 #define MICROPY_ENABLE_FINALISER    (MICROPY_VFS)
@@ -48,36 +48,36 @@
 #define MICROPY_REPL_AUTO_INDENT    (1)
 #define MICROPY_KBD_EXCEPTION       (1)
 #define MICROPY_PY_ASYNC_AWAIT      (0)
-#define MICROPY_PY_BUILTINS_BYTES_HEX (0)
+#define MICROPY_PY_BUILTINS_BYTES_HEX (1)
 #define MICROPY_PY_BUILTINS_FILTER  (0)
 #define MICROPY_PY_BUILTINS_MIN_MAX (0)
 #define MICROPY_PY_BUILTINS_PROPERTY (0)
 #define MICROPY_PY_BUILTINS_RANGE_ATTRS (0)
 #define MICROPY_PY_BUILTINS_REVERSED (0)
 #define MICROPY_PY_BUILTINS_STR_COUNT (0)
-#define MICROPY_PY_BUILTINS_MEMORYVIEW (0)
+#define MICROPY_PY_BUILTINS_MEMORYVIEW (1)
 #define MICROPY_PY_BUILTINS_HELP    (0)
 #define MICROPY_PY_BUILTINS_HELP_TEXT zephyr_help_text
 #define MICROPY_PY_ARRAY            (0)
 #define MICROPY_PY_COLLECTIONS      (0)
 #define MICROPY_PY_CMATH            (0)
 #define MICROPY_PY_IO               (0)
-#define MICROPY_PY_MICROPYTHON_MEM_INFO (0)
-#define MICROPY_PY_MACHINE          (0)
-#define MICROPY_PY_MACHINE_INCLUDEFILE "microPython/modmachine.c"
+#define MICROPY_PY_MICROPYTHON_MEM_INFO (1)
+#define MICROPY_PY_MACHINE          (1)
+#define MICROPY_PY_MACHINE_INCLUDEFILE "../src/microPython/modmachine.c"
 #define MICROPY_PY_MACHINE_I2C      (0)
 #define MICROPY_PY_MACHINE_SPI      (0)
 #define MICROPY_PY_MACHINE_SPI_MSB (SPI_TRANSFER_MSB)
 #define MICROPY_PY_MACHINE_SPI_LSB (SPI_TRANSFER_LSB)
 #define MICROPY_PY_MACHINE_PIN_MAKE_NEW mp_pin_make_new
 #define MICROPY_PY_MACHINE_UART     (0)
-#define MICROPY_PY_MACHINE_UART_INCLUDEFILE "microPython/machine_uart.c"
+#define MICROPY_PY_MACHINE_UART_INCLUDEFILE "../src/microPython/machine_uart.c"
 #ifdef CONFIG_WATCHDOG
 #define MICROPY_PY_MACHINE_WDT      (0)
-#define MICROPY_PY_MACHINE_WDT_INCLUDEFILE  "microPython/machine_wdt.c"
+#define MICROPY_PY_MACHINE_WDT_INCLUDEFILE  "../src/microPython/machine_wdt.c"
 #endif
 #define MICROPY_PY_MACHINE_PWM      (0)
-#define MICROPY_PY_MACHINE_PWM_INCLUDEFILE "microPython/machine_pwm.c"
+#define MICROPY_PY_MACHINE_PWM_INCLUDEFILE "../src/microPython/machine_pwm.c"
 #define MICROPY_PY_STRUCT           (0)
 #ifdef CONFIG_NETWORKING
 // If we have networking, we likely want errno comfort
@@ -85,7 +85,7 @@
 #define MICROPY_PY_SOCKET           (1)
 #endif
 #ifdef CONFIG_BT
-#define MICROPY_PY_BLUETOOTH        (0)
+#define MICROPY_PY_BLUETOOTH        (1)
 #ifdef CONFIG_BT_CENTRAL
 #define MICROPY_PY_BLUETOOTH_ENABLE_CENTRAL_MODE (0)
 #endif
