@@ -39,7 +39,10 @@
 #include <zephyr/bluetooth/gatt.h>
 #include "extmod/modbluetooth.h"
 
-#define DEBUG_printf(...) // printk("BLE: " __VA_ARGS__)
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(modbluetooth_zephyr, CONFIG_BT_LOG_LEVEL);
+
+#define DEBUG_printf(...) LOG_DBG(__VA_ARGS__)
 
 #define BLE_HCI_SCAN_ITVL_MIN 0x10
 #define BLE_HCI_SCAN_ITVL_MAX 0xffff
@@ -293,7 +296,9 @@ int mp_bluetooth_init(void) {
 
         // bt_enable can only be called once.
         int ret = bt_enable(NULL);
-        if (ret) {
+        if (ret == -EALREADY) {
+            LOG_WRN("Bluetooth already enabled, continuing");
+        } else if (ret) {
             return bt_err_to_errno(ret);
         }
     }

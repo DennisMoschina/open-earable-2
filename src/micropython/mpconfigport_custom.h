@@ -61,7 +61,7 @@
 #define MICROPY_PY_ARRAY            (0)
 #define MICROPY_PY_COLLECTIONS      (0)
 #define MICROPY_PY_CMATH            (1)
-#define MICROPY_PY_IO               (0)
+#define MICROPY_PY_IO               (1)
 #define MICROPY_PY_MICROPYTHON_MEM_INFO (1)
 #define MICROPY_PY_MACHINE          (1)
 #define MICROPY_PY_MACHINE_INCLUDEFILE "../src/microPython/modmachine.c"
@@ -78,7 +78,7 @@
 #endif
 #define MICROPY_PY_MACHINE_PWM      (0)
 #define MICROPY_PY_MACHINE_PWM_INCLUDEFILE "../src/microPython/machine_pwm.c"
-#define MICROPY_PY_STRUCT           (0)
+#define MICROPY_PY_STRUCT           (1)
 #ifdef CONFIG_NETWORKING
 // If we have networking, we likely want errno comfort
 #define MICROPY_PY_ERRNO            (1)
