@@ -111,6 +111,11 @@
 #endif
 #define MICROPY_READER_VFS          (MICROPY_VFS)
 
+#define MICROPY_PY_OS_DUPTERM       (1)
+// #define MICROPY_PY_OS_DUPTERM_BUILTIN_STREAM (1)
+#define MICROPY_PY_OS_DUPTERM_NOTIFY (1)
+// #define MICROPY_PY_OS_DUPTERM_STREAM_DETACHED_ATTACHED (1)
+
 // fatfs configuration used in ffconf.h
 // #define MICROPY_FATFS_ENABLE_LFN       (1)
 // #define MICROPY_FATFS_LFN_CODE_PAGE    437 /* 1=SFN/ANSI 437=LFN/U.S.(OEM) */
