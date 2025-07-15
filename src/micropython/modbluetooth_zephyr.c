@@ -203,6 +203,10 @@ static void mp_bt_zephyr_connected(struct bt_conn *conn, uint8_t err) {
         mp_bluetooth_gap_on_connected_disconnected(MP_BLUETOOTH_IRQ_CENTRAL_DISCONNECT, info.id, 0xff, addr);
     } else {
         DEBUG_printf("Central connected with id %d\n", info.id);
+        if (!mp_bt_zephyr_next_conn) {
+            DEBUG_printf("mp_bt_zephyr_next_conn is NULL\n");
+            return;
+        }
         mp_bt_zephyr_next_conn->conn = bt_conn_ref(conn);
         mp_bluetooth_gap_on_connected_disconnected(MP_BLUETOOTH_IRQ_CENTRAL_CONNECT, info.id, info.le.dst->type, info.le.dst->a.val);
         mp_bt_zephyr_insert_connection(mp_bt_zephyr_next_conn);
