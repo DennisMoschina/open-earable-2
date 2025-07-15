@@ -218,7 +218,7 @@ soft_reset:
     #endif
 
     #if MICROPY_MODULE_FROZEN || MICROPY_VFS
-    pyexec_file_if_exists("main.py");
+    pyexec_file_if_exists("app_launcher.py");
     #endif
 
     for (;;) {
