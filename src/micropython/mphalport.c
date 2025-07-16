@@ -27,6 +27,7 @@
 #include "py/runtime.h"
 #include "py/mphal.h"
 #include "py/ringbuf.h"
+#include "extmod/modmachine.h"
 
 
 #ifndef MICROPY_HW_STDIN_BUFFER_LEN
@@ -83,4 +84,11 @@ void mp_hal_wait_sem(struct k_sem *sem, uint32_t timeout_ms) {
             return;
         }
     }
+}
+
+mp_hal_pin_obj_t mp_hal_get_pin_obj(mp_obj_t pin_in) {
+    if (mp_obj_is_type(pin_in, &machine_pin_type)) {
+        return MP_OBJ_TO_PTR(pin_in);
+    }
+    mp_raise_ValueError(MP_ERROR_TEXT("invalid pin"));
 }
