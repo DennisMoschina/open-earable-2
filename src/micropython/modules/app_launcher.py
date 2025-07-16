@@ -2,7 +2,7 @@ import bluetooth
 from micropython import const
 import os
 import sys
-import app_core
+import app_core as app_core
 from time import sleep
 
 APPS_DIR = 'apps'
