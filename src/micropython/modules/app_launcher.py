@@ -3,7 +3,7 @@ from micropython import const
 import os
 import sys
 import app_core as app_core
-from time import sleep
+import _thread
 
 APPS_DIR = 'apps'
 
@@ -118,7 +118,7 @@ def start_app(app_name):
         app_module = load_app(app_name)
         if not app_module:
             raise AppException("App " + app_name + " could not be loaded.")
-    app_module.main()
+    _thread.start_new_thread(app_module.main, ())
 
 def _set_app_names(app_names):
     if not app_names:
@@ -127,7 +127,6 @@ def _set_app_names(app_names):
         ble.gatts_write(list_apps_handle, ','.join(app_names).encode('utf-8'))
 
 def init():
-    sleep(1)
     ble.active(True)
 
     if not ble.active():
