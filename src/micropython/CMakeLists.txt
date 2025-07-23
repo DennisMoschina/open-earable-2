@@ -58,8 +58,7 @@ set(MICROPY_SOURCE_PORT
     mpthreadport.c
     modopenearable/modopenearable.c
     modopenearable/status_led.cpp
-    # modopenearable/openearable.py
-    # modopenearable/status_led.py
+    modopenearable/parse_info.c
 )
 list(TRANSFORM MICROPY_SOURCE_PORT PREPEND ${MICROPY_PORT_DIR}/)
 
