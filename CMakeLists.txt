@@ -46,24 +46,26 @@ endif()
 # target_include_directories(app PRIVATE ${ZEPHYR_BASE}/../modules/fs/littlefs)
 
 # Include application events and configuration headers
-zephyr_library_include_directories(
-    include
-    src/audio
-    src/Battery
-    src/Wire
-    src/bluetooth
-    src/drivers
-    src/modules
-    src/utils
-    src/utils/macros
-    src/ParseInfo
-    src/SD_Card/SDLogger
-    src/SD_Card/Benchmark
-    src/SD_Card/SD_Card_Manager
-    src/micropython
-    src/file_system_access
-    src/littlefs_manager
+set(APP_INCLUDE_DIRS
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src/audio
+    ${CMAKE_SOURCE_DIR}/src/Battery
+    ${CMAKE_SOURCE_DIR}/src/Wire
+    ${CMAKE_SOURCE_DIR}/src/bluetooth
+    ${CMAKE_SOURCE_DIR}/src/drivers
+    ${CMAKE_SOURCE_DIR}/src/modules
+    ${CMAKE_SOURCE_DIR}/src/utils
+    ${CMAKE_SOURCE_DIR}/src/utils/macros
+    ${CMAKE_SOURCE_DIR}/src/ParseInfo
+    ${CMAKE_SOURCE_DIR}/src/SD_Card/SDLogger
+    ${CMAKE_SOURCE_DIR}/src/SD_Card/Benchmark
+    ${CMAKE_SOURCE_DIR}/src/SD_Card/SD_Card_Manager
+    ${CMAKE_SOURCE_DIR}/src/micropython
+    ${CMAKE_SOURCE_DIR}/src/file_system_access
+    ${CMAKE_SOURCE_DIR}/src/littlefs_manager
 )
+
+zephyr_library_include_directories(${APP_INCLUDE_DIRS})
 
 zephyr_library_include_directories(app PRIVATE
     ${ZEPHYR_NRF_MODULE_DIR}/boards/teco/openearable_v2_nrf5340)
