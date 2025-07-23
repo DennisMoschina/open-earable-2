@@ -95,6 +95,7 @@
 #define MICROPY_PY_TIME_TIME_TIME_NS (1)
 #define MICROPY_PY_TIME_INCLUDEFILE "ports/zephyr/modtime.c"
 #define MICROPY_PY_ZEPHYR           (1)
+#define MICROPY_PY_OPENEARABLE      (1)
 #define MICROPY_PY_ZSENSOR          (0)
 #define MICROPY_PY_SYS_MODULES      (1)
 #define MICROPY_LONGINT_IMPL        (MICROPY_LONGINT_IMPL_MPZ)
