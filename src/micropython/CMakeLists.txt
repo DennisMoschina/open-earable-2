@@ -56,6 +56,10 @@ set(MICROPY_SOURCE_PORT
     zephyr_device.c
     zephyr_storage.c
     mpthreadport.c
+    modopenearable/modopenearable.c
+    modopenearable/status_led.cpp
+    # modopenearable/openearable.py
+    # modopenearable/status_led.py
 )
 list(TRANSFORM MICROPY_SOURCE_PORT PREPEND ${MICROPY_PORT_DIR}/)
 
@@ -114,6 +118,8 @@ zephyr_library_include_directories(
     ${MICROPY_PORT_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}/../..
+    ${APP_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_BINARY_DIR}/modopenearable
 )
 
 zephyr_library_compile_options(
