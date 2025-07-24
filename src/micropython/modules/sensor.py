@@ -1,0 +1,101 @@
+import _openearable as oe
+import parse_info as pi
+
+class SensorValueComponent:
+    def __init__(self, name: str, value, unit: str):
+        self.name = name
+        self.value = value
+        self.unit = unit
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "value": self.value,
+            "unit": self.unit
+        }
+    
+    def __repr__(self):
+        return "SensorValueComponent(name=" + str(self.name) + ", value=" + str(self.value) + ", unit=" + str(self.unit) + ")"
+
+class SensorValueGroup:
+    def __init__(self, name: str, components: list[SensorValueComponent]):
+        self.name = name
+        self.components = components
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "components": [comp.to_dict() for comp in self.components]
+        }
+    
+    def __repr__(self):
+        return "SensorValueGroup(name=" + str(self.name) + ", components=" + str(self.components) + ")"
+
+class SensorValue:
+    def __init__(self, name: str, timestamp: int, groups: list[SensorValueGroup]):
+        self.name = name
+        self.timestamp = timestamp
+        self.groups = groups
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "timestamp": self.timestamp,
+            "groups": [
+                {
+                    "name": group.name,
+                    "components": [
+                        {"name": comp.name, "value": comp.value, "unit": comp.unit}
+                        for comp in group.components
+                    ]
+                } for group in self.groups
+            ]
+        }
+    
+    def __repr__(self):
+        return "SensorValue(name=" + str(self.name) + ", timestamp=" + str(self.timestamp) + ", groups=" + str(self.groups) + ")"
+
+class Sensor:
+    def __init__(self, name: str, sensor_id: int, scheme: pi.SensorScheme):
+        self.name = name
+        self.sensor_id = sensor_id
+        self.scheme = scheme
+
+    def configure(self, sample_rate_index: int, storage_options: list[pi.SensorConfigOptionsType], completion_handler: callable = None):
+        # TODO: Check if configuration is valid
+        self.completion_handler = completion_handler
+        storage_options_mask = 0
+        for option in storage_options:
+            storage_options_mask |= option
+
+        return oe.config_sensor(self.sensor_id, sample_rate_index, storage_options_mask)
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "sensor_id": self.sensor_id,
+            "scheme": self.scheme
+        }
+    
+    def __repr__(self):
+        return "Sensor(name=" + str(self.name) + ", sensor_id=" + str(self.sensor_id) + ", scheme=" + str(self.scheme) + ")"
+    
+def init_sensors():
+    schemes = pi.get_sensor_schemes()
+    global sensors
+    sensors: dict[int, Sensor] = {}
+
+    for scheme in schemes:
+        sensor = Sensor(scheme.name, scheme.id, scheme)
+        sensors[sensor.sensor_id] = sensor
+
+    return sensors
+
+def get_sensor(sensor_id: int) -> Sensor:
+    if sensor_id in sensors:
+        return sensors[sensor_id]
+    else:
+        raise ValueError(f"Sensor with ID {sensor_id} not found.")
+    
+def get_sensors() -> list[Sensor]:
+    return list(sensors.values())

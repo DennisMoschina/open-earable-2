@@ -71,7 +71,7 @@ class SensorScheme:
     def __repr__(self):
         return "SensorScheme(name=" + str(self.name) + ", id=" + str(self.id) + ", groups=" + str(self.groups) + ", config_options=" + str(self.config_options) + ")"
 
-def get_sensor_schemes():
+def get_sensor_schemes() -> list[SensorScheme]:
     raw_data = oe.get_sensor_schemes()  # Calls the C function returning list of tuples
     sensor_schemes = []
 

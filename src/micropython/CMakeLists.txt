@@ -59,6 +59,7 @@ set(MICROPY_SOURCE_PORT
     modopenearable/modopenearable.c
     modopenearable/status_led.cpp
     modopenearable/parse_info.c
+    modopenearable/sensor.c
 )
 list(TRANSFORM MICROPY_SOURCE_PORT PREPEND ${MICROPY_PORT_DIR}/)
 
