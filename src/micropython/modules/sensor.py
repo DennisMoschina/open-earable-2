@@ -61,14 +61,25 @@ class Sensor:
         self.sensor_id = sensor_id
         self.scheme = scheme
 
-    def configure(self, sample_rate_index: int, storage_options: list[pi.SensorConfigOptionsType], completion_handler: callable = None):
-        # TODO: Check if configuration is valid
+    def configure(self, sample_rate_index: int, storage_options: list[pi.SensorConfigOptionsType], completion_handler: callable = None):        
+        if not all(option in self.scheme.config_options.available_options for option in storage_options):
+            raise ValueError("Invalid storage options provided")
+        if self.scheme.config_options.frequency_options is not None:
+            if not sample_rate_index < len(self.scheme.config_options.frequency_options.frequencies):
+                raise ValueError("Invalid frequency index, max index is " + str(len(self.scheme.config_options.frequency_options.frequencies) - 1))
+            if self.scheme.config_options.frequency_options.max_ble_frequency_index is not None:
+                if not len(self.scheme.config_options.frequency_options.frequencies) < self.scheme.config_options.frequency_options.max_ble_frequency_index:
+                    raise ValueError("Invalid frequency index, exceeds max BLE frequency index of " + str(self.scheme.config_options.frequency_options.max_ble_frequency_index))
         self.completion_handler = completion_handler
         storage_options_mask = 0
         for option in storage_options:
             storage_options_mask |= option
 
         return oe.config_sensor(self.sensor_id, sample_rate_index, storage_options_mask)
+
+    def get_config(self) -> tuple[int, int]:
+        # TODO: Implement getting the current configuration
+        raise NotImplementedError("get_config is not implemented yet")
 
     def to_dict(self):
         return {
