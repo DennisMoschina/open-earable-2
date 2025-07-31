@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-void init_mp();
+int init_mp();
 
 #ifdef __cplusplus
 }
