@@ -20,7 +20,12 @@ static void sensor_data_received_callback(const struct zbus_channel *chan);
 ZBUS_LISTENER_DEFINE(mp_sensor_data_listener, sensor_data_received_callback);
 ZBUS_CHAN_ADD_OBS(sensor_chan, mp_sensor_data_listener, 3);
 
-static mp_obj_t sensor_data_callbacks[MAX_SENSORS] = {[0 ... MAX_SENSORS - 1] = MP_OBJ_NULL};
+struct sensor_callback_tuple {
+    mp_obj_t sensor_self;
+    mp_obj_t callback;
+};
+
+static struct sensor_callback_tuple sensor_data_callbacks[MAX_SENSORS] = {[0 ... MAX_SENSORS - 1] = {MP_OBJ_NULL, MP_OBJ_NULL}};
 
 K_THREAD_STACK_DEFINE(mp_sensor_work_stack, 1024);
 K_MSGQ_DEFINE(mp_sensor_work_msg_q, sizeof(struct sensor_data), MAX_SENSOR_QUEUE_SIZE, 4);
@@ -51,21 +56,26 @@ mp_obj_t openearable_config_sensor(mp_obj_t sensor_id, mp_obj_t sample_rate_inde
 }
 
 
-void register_sensor_data_callback(uint8_t sensor_id, mp_obj_t completion_handler);
+void register_sensor_data_callback(uint8_t sensor_id, mp_obj_t sensor_self, mp_obj_t completion_handler);
 
-mp_obj_t openearable_on_data_received(mp_obj_t sensor_id, mp_obj_t completion_handler) {
+mp_obj_t openearable_on_data_received(mp_obj_t sensor_id, mp_obj_t sensor_self, mp_obj_t completion_handler) {
     uint8_t id = mp_obj_get_int(sensor_id);
     if (!mp_obj_is_callable(completion_handler)) {
         mp_raise_TypeError(MP_ERROR_TEXT("completion_handler must be a callable"));
     }
-    register_sensor_data_callback(id, completion_handler);
+    register_sensor_data_callback(id, sensor_self, completion_handler);
     return mp_const_none;
 }
 
-void register_sensor_data_callback(uint8_t sensor_id, mp_obj_t completion_handler) {
+void register_sensor_data_callback(uint8_t sensor_id, mp_obj_t sensor_self, mp_obj_t completion_handler) {
     // TODO: allow multiple callbacks per sensor ID
+
     if (sensor_id < MAX_SENSORS) {
-        sensor_data_callbacks[sensor_id] = completion_handler;
+        struct sensor_callback_tuple t = {
+            .sensor_self = sensor_self,
+            .callback = completion_handler,
+        };
+        sensor_data_callbacks[sensor_id] = t;
     }
 }
 
@@ -160,14 +170,16 @@ static mp_obj_t mp_sensor_parser(mp_obj_t unused) {
     memcpy(&local, &sensor_data, sizeof(local));
     k_mutex_unlock(&sensor_data_mutex);
 
-    mp_obj_t cb = sensor_data_callbacks[local.id];
-    if (cb == MP_OBJ_NULL) {
+    struct sensor_callback_tuple t = sensor_data_callbacks[local.id];
+    mp_obj_t sensor_self = t.sensor_self;
+    mp_obj_t cb = t.callback;
+    if (cb == MP_OBJ_NULL || sensor_self == MP_OBJ_NULL || !mp_obj_is_callable(cb)) {
         return mp_const_none;
     }
 
     mp_obj_t parsed = parse_data(local.id, local.data, local.size);
     if (parsed != MP_OBJ_NULL) {
-        mp_call_function_1(cb, parsed);
+        mp_call_function_2(cb, sensor_self, parsed);
     }
 
     return mp_const_none;
