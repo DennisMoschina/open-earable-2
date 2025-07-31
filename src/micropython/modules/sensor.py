@@ -86,9 +86,8 @@ class Sensor:
         Register a callback that will be called when new sensor data is received.
         The callback should accept a single argument, which is the SensorValue object.
         """
-        # TODO: implement this method to handle data reception
         self._on_data_received_cb = completion_handler
-        oe.on_data_received(self.sensor_id, self._on_data_received_cb)
+        oe.on_data_received(self.sensor_id, self, self._on_data_received_cb)
 
     def cancel_data_received(self):
         """
