@@ -153,6 +153,6 @@ def start():
             print("Loaded app: " + app_name)
             if app_module.app_info.type == app_core.AppType.DAEMON:
                 print("Starting daemon app: " + app_name)
-                app_module.main()
+                start_app(app_name)
 
 init()
