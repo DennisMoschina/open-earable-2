@@ -37,6 +37,7 @@ class SensorComponentGroup:
 class SensorConfigOptionsType:
     DATA_STREAMING = 0x01
     DATA_STORAGE = 0x02
+    DATA_PROCESSING = 0x04
     FREQUENCIES_DEFINED = 0x10
 
 
@@ -94,6 +95,8 @@ def get_sensor_schemes() -> list[SensorScheme]:
             option_types.append(SensorConfigOptionsType.DATA_STORAGE)
         if SensorConfigOptionsType.DATA_STREAMING & raw_option_types:
             option_types.append(SensorConfigOptionsType.DATA_STREAMING)
+        if SensorConfigOptionsType.DATA_PROCESSING & raw_option_types:
+            option_types.append(SensorConfigOptionsType.DATA_PROCESSING)
         if SensorConfigOptionsType.FREQUENCIES_DEFINED & raw_option_types:
             option_types.append(SensorConfigOptionsType.FREQUENCIES_DEFINED)
 
