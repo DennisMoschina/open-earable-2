@@ -29,7 +29,7 @@ static void micropython_thread_fn(void *p1, void *p2, void *p3) {
  *         by setting up the console and creating a thread to run
  *         the MicroPython interpreter.
  */
-void init_mp() {
+int init_mp() {
     LOG_DBG("Initializing MicroPython...\n");
     #ifdef CONFIG_CONSOLE_SUBSYS
     mp_console_init();
@@ -50,4 +50,12 @@ void init_mp() {
         K_NO_WAIT
     );
     LOG_DBG("MicroPython initialized\n");
+
+    int ret = init_mp_sensor();
+    if (ret) {
+        LOG_ERR("Failed to initialize MP sensor: %d", ret);
+        return ret;
+    }
+
+    return 0;
 }
