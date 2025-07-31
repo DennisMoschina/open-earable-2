@@ -68,18 +68,46 @@ class Sensor:
             if not sample_rate_index < len(self.scheme.config_options.frequency_options.frequencies):
                 raise ValueError("Invalid frequency index, max index is " + str(len(self.scheme.config_options.frequency_options.frequencies) - 1))
             if self.scheme.config_options.frequency_options.max_ble_frequency_index is not None:
-                if not len(self.scheme.config_options.frequency_options.frequencies) < self.scheme.config_options.frequency_options.max_ble_frequency_index:
+                if not sample_rate_index < self.scheme.config_options.frequency_options.max_ble_frequency_index:
                     raise ValueError("Invalid frequency index, exceeds max BLE frequency index of " + str(self.scheme.config_options.frequency_options.max_ble_frequency_index))
-        self.completion_handler = completion_handler
+        if completion_handler is not None:
+            if not callable(completion_handler):
+                raise ValueError("Completion handler must be a callable function")
+            # Register the callback for data reception
+            self.on_data_received(completion_handler)
         storage_options_mask = 0
         for option in storage_options:
             storage_options_mask |= option
 
         return oe.config_sensor(self.sensor_id, sample_rate_index, storage_options_mask)
 
+    def on_data_received(self, completion_handler: callable):
+        """
+        Register a callback that will be called when new sensor data is received.
+        The callback should accept a single argument, which is the SensorValue object.
+        """
+        # TODO: implement this method to handle data reception
+        self._on_data_received_cb = completion_handler
+        oe.on_data_received(self.sensor_id, self._on_data_received_cb)
+
+    def cancel_data_received(self):
+        """
+        Unregister the callback for data reception.
+        """
+        # TODO: implement this method to cancel data reception
+        self._on_data_received_cb = None
+
     def get_config(self) -> tuple[int, int]:
         # TODO: Implement getting the current configuration
         raise NotImplementedError("get_config is not implemented yet")
+
+    def on_config_changed(self, completion_handler: callable):
+        """
+        Register a callback that will be called when the sensor configuration changes.
+        The callback should accept a single argument, which is the new configuration.
+        """
+        # TODO: implement this method to handle configuration changes
+        self._on_config_changed_cb = completion_handler
 
     def to_dict(self):
         return {
