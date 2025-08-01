@@ -32,8 +32,7 @@ class SensorValueGroup:
         return "SensorValueGroup(name=" + str(self.name) + ", components=" + str(self.components) + ")"
 
 class SensorValue:
-    def __init__(self, name: str, timestamp: int, groups: list[SensorValueGroup]):
-        self.name = name
+    def __init__(self, timestamp: int, groups: list[SensorValueGroup]):
         self.timestamp = timestamp
         self.groups = groups
 
@@ -52,8 +51,20 @@ class SensorValue:
             ]
         }
     
+    @classmethod
+    def from_dict(cls, data_dict):
+        print("Creating SensorValue from dict:", data_dict)
+        groups = []
+        for group_name, group_data in data_dict.get("groups", {}).items():
+            components = []
+            for comp_name, comp_value in group_data.items():
+                components.append(SensorValueComponent(comp_name, comp_value, ""))
+                group = SensorValueGroup(group_name, components)
+                groups.append(group)
+        return cls(data_dict["timestamp"], groups)
+
     def __repr__(self):
-        return "SensorValue(name=" + str(self.name) + ", timestamp=" + str(self.timestamp) + ", groups=" + str(self.groups) + ")"
+        return "SensorValue(timestamp=" + str(self.timestamp) + ", groups=" + str(self.groups) + ")"
 
 class Sensor:
     def __init__(self, name: str, sensor_id: int, scheme: pi.SensorScheme):
@@ -87,7 +98,12 @@ class Sensor:
         The callback should accept a single argument, which is the SensorValue object.
         """
         self._on_data_received_cb = completion_handler
-        oe.on_data_received(self.sensor_id, self._on_data_received_cb)
+        oe.on_data_received(self.sensor_id, self._handle_data_received)
+
+    def _handle_data_received(self, data_dict):
+        if self._on_data_received_cb:
+            sensor_value = SensorValue.from_dict(data_dict)
+            self._on_data_received_cb(sensor_value)
 
     def cancel_data_received(self):
         """
