@@ -32,7 +32,8 @@ class SensorValueGroup:
         return "SensorValueGroup(name=" + str(self.name) + ", components=" + str(self.components) + ")"
 
 class SensorValue:
-    def __init__(self, timestamp: int, groups: list[SensorValueGroup]):
+    def __init__(self, name: str, timestamp: int, groups: list[SensorValueGroup]):
+        self.name = name
         self.timestamp = timestamp
         self.groups = groups
 
@@ -50,21 +51,9 @@ class SensorValue:
                 } for group in self.groups
             ]
         }
-    
-    @classmethod
-    def from_dict(cls, data_dict):
-        print("Creating SensorValue from dict:", data_dict)
-        groups = []
-        for group_name, group_data in data_dict.get("groups", {}).items():
-            components = []
-            for comp_name, comp_value in group_data.items():
-                components.append(SensorValueComponent(comp_name, comp_value, ""))
-                group = SensorValueGroup(group_name, components)
-                groups.append(group)
-        return cls(data_dict["timestamp"], groups)
 
     def __repr__(self):
-        return "SensorValue(timestamp=" + str(self.timestamp) + ", groups=" + str(self.groups) + ")"
+        return "SensorValue(name=" + str(self.name) + ", timestamp=" + str(self.timestamp) + ", groups=" + str(self.groups) + ")"
 
 class Sensor:
     def __init__(self, name: str, sensor_id: int, scheme: pi.SensorScheme):
@@ -102,7 +91,7 @@ class Sensor:
 
     def _handle_data_received(self, data_dict):
         if self._on_data_received_cb:
-            sensor_value = SensorValue.from_dict(data_dict)
+            sensor_value = self._parse_data(data_dict)
             self._on_data_received_cb(sensor_value)
 
     def cancel_data_received(self):
@@ -123,6 +112,32 @@ class Sensor:
         """
         # TODO: implement this method to handle configuration changes
         self._on_config_changed_cb = completion_handler
+
+    def _parse_data(self, data_dict):
+        """
+        Parse the raw data received from the sensor and return a SensorValue object.
+        This method should be called internally when data is received.
+        """
+        if not isinstance(data_dict, dict):
+            raise ValueError("Data must be a dictionary")
+        
+        timestamp = data_dict.get("timestamp", 0)
+        groups = []
+        
+        for group_name, group_data in data_dict.get("groups", {}).items():
+            components = []
+            for comp_name, comp_value in group_data.items():
+                unit = ""
+                for scheme_group in self.scheme.groups:
+                    if scheme_group.name == group_name:
+                        for scheme_comp in scheme_group.components:
+                            if scheme_comp.name == comp_name:
+                                unit = scheme_comp.unit
+                                break
+                components.append(SensorValueComponent(comp_name, comp_value, unit))
+            groups.append(SensorValueGroup(group_name, components))
+
+        return SensorValue(self.name, timestamp, groups)
 
     def to_dict(self):
         return {
