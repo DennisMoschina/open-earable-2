@@ -60,6 +60,16 @@ class Sensor:
         self.name = name
         self.sensor_id = sensor_id
         self.scheme = scheme
+        self._on_data_received_cb = None
+        self._unit_lookup = self._build_unit_lookup()
+
+    def _build_unit_lookup(self):
+        # Creates a flat map: {"group_name|component_name": "unit"}
+        lookup = {}
+        for group in self.scheme.groups:
+            for comp in group.components:
+                lookup[f"{group.name}|{comp.name}"] = comp.unit
+        return lookup
 
     def configure(self, sample_rate_index: int, storage_options: list[pi.SensorConfigOptionsType], completion_handler: callable = None):        
         if not all(option in self.scheme.config_options.available_options for option in storage_options):
@@ -90,9 +100,10 @@ class Sensor:
         oe.on_data_received(self.sensor_id, self._handle_data_received)
 
     def _handle_data_received(self, data_dict):
-        if self._on_data_received_cb:
+        cb = self._on_data_received_cb
+        if cb:
             sensor_value = self._parse_data(data_dict)
-            self._on_data_received_cb(sensor_value)
+            cb(sensor_value)
 
     def cancel_data_received(self):
         """
@@ -127,13 +138,7 @@ class Sensor:
         for group_name, group_data in data_dict.get("groups", {}).items():
             components = []
             for comp_name, comp_value in group_data.items():
-                unit = ""
-                for scheme_group in self.scheme.groups:
-                    if scheme_group.name == group_name:
-                        for scheme_comp in scheme_group.components:
-                            if scheme_comp.name == comp_name:
-                                unit = scheme_comp.unit
-                                break
+                unit = self._unit_lookup.get(f"{group_name}|{comp_name}", "")
                 components.append(SensorValueComponent(comp_name, comp_value, unit))
             groups.append(SensorValueGroup(group_name, components))
 
