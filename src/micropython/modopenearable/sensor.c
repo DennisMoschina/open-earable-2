@@ -70,7 +70,7 @@ void register_sensor_data_callback(uint8_t sensor_id, mp_obj_t completion_handle
 }
 
 /// Parse the sensor data and return a python dictionary
-mp_obj_t parse_data(uint8_t sensor_id, uint8_t *data, size_t size) {
+mp_obj_t parse_data(uint8_t sensor_id, uint64_t timestamp, uint8_t *data, size_t size) {
     struct SensorScheme *scheme = getSensorSchemeForId(sensor_id);
     if (!scheme) {
         mp_raise_TypeError(MP_ERROR_TEXT("Invalid sensor ID"));
@@ -78,6 +78,8 @@ mp_obj_t parse_data(uint8_t sensor_id, uint8_t *data, size_t size) {
 
     mp_obj_t parsed_data = mp_obj_new_dict(0);
     size_t offset = 0;
+
+    mp_obj_t groups_dict = mp_obj_new_dict(0);
 
     for (size_t i = 0; i < scheme->groupCount; i++) {
         struct SensorComponentGroup *group = &scheme->groups[i];
@@ -134,9 +136,12 @@ mp_obj_t parse_data(uint8_t sensor_id, uint8_t *data, size_t size) {
             mp_obj_dict_store(MP_OBJ_TO_PTR(group_dict), mp_obj_new_str(name, strlen(name)), value);
         }
 
-        mp_obj_dict_store(MP_OBJ_TO_PTR(parsed_data), mp_obj_new_str(group->name, strlen(group->name)), group_dict);
+        mp_obj_dict_store(MP_OBJ_TO_PTR(groups_dict), mp_obj_new_str(group->name, strlen(group->name)), group_dict);
     }
 
+    mp_obj_dict_store(MP_OBJ_TO_PTR(parsed_data), mp_obj_new_str("groups", 6), groups_dict);
+    mp_obj_dict_store(MP_OBJ_TO_PTR(parsed_data), mp_obj_new_str("sensorId", 8), mp_obj_new_int(sensor_id));
+    mp_obj_dict_store(MP_OBJ_TO_PTR(parsed_data), mp_obj_new_str("timestamp", 9), mp_obj_new_int(timestamp));
     return parsed_data;
 }
 
@@ -165,7 +170,7 @@ static mp_obj_t mp_sensor_parser(mp_obj_t unused) {
         return mp_const_none;
     }
 
-    mp_obj_t parsed = parse_data(local.id, local.data, local.size);
+    mp_obj_t parsed = parse_data(local.id, local.time, local.data, local.size);
     if (parsed != MP_OBJ_NULL) {
         mp_call_function_1(cb, parsed);
     }
@@ -203,23 +208,6 @@ static void sensor_worker_loop(void) {
         }
 
         mp_sched_schedule((mp_obj_t)&mp_sensor_parser_fun_obj, mp_const_none);
-
-        // mp_obj_t cb = sensor_data_callbacks[sensor_data.id];
-        // if (cb != MP_OBJ_NULL) {
-        //     LOG_DBG("Processing sensor data for ID %d", sensor_data.id);
-        //     mp_obj_t parsed = parse_data(sensor_data.id, sensor_data.data, sensor_data.size);
-        //     LOG_DBG("Parsed sensor data for ID %d", sensor_data.id);
-        //     if (parsed == MP_OBJ_NULL) {
-        //         LOG_ERR("Failed to parse sensor data for ID %d", sensor_data.id);
-        //         continue;
-        //     }
-        //     bool scheduled = mp_sched_schedule(cb, parsed);
-        //     if (!scheduled) {
-        //         LOG_ERR("Failed to schedule callback for sensor ID %d", sensor_data.id);
-        //         continue;
-        //     }
-        //     LOG_DBG("Scheduled callback for sensor ID %d", sensor_data.id);
-        // }
     }
 }
 
