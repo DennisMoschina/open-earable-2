@@ -204,7 +204,7 @@ static void config_work_handler(struct k_work *work) {
 
 	sensor->set_consumers(config.storageOptions);
 
-	if (config.storageOptions & (DATA_STORAGE | DATA_STREAMING)) {
+	if (config.storageOptions) {
 		if (sensor->init(&sensor_queue)) {
 			if (active_sensors == 0) start_sensor_manager();
 			sensor->start(config.sampleRateIndex);
