@@ -77,8 +77,8 @@ class Sensor:
         if self.scheme.config_options.frequency_options is not None:
             if not sample_rate_index < len(self.scheme.config_options.frequency_options.frequencies):
                 raise ValueError("Invalid frequency index, max index is " + str(len(self.scheme.config_options.frequency_options.frequencies) - 1))
-            if self.scheme.config_options.frequency_options.max_ble_frequency_index is not None:
-                if not sample_rate_index < self.scheme.config_options.frequency_options.max_ble_frequency_index:
+            if self.scheme.config_options.frequency_options.max_ble_frequency_index is not None and pi.SensorConfigOptionsType.DATA_STREAMING in storage_options:
+                if sample_rate_index > self.scheme.config_options.frequency_options.max_ble_frequency_index:
                     raise ValueError("Invalid frequency index, exceeds max BLE frequency index of " + str(self.scheme.config_options.frequency_options.max_ble_frequency_index))
         if completion_handler is not None:
             if not callable(completion_handler):
