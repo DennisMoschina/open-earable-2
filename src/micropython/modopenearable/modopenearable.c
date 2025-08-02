@@ -3,9 +3,9 @@
 
 #include "py/runtime.h"
 
-#include "status_led.h"
-#include "parse_info.h"
-#include "sensor.h"
+#include "modstatus_led.h"
+#include "modparse_info.h"
+#include "modsensor.h"
 
 static mp_obj_t openearable_info(void) {
     mp_printf(&mp_plat_print, "OpenEarable MicroPython Module\n");

@@ -1,4 +1,4 @@
-#include "parse_info.h"
+#include "modparse_info.h"
 #include "SensorScheme.h"
 
 static mp_obj_t build_sensor_component(const struct SensorComponent *component) {

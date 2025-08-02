@@ -1,4 +1,4 @@
-#include "sensor.h"
+#include "modsensor.h"
 #include "SensorManager.h"
 #include "SensorScheme.h"
 #include "ParseType.h"
