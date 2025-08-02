@@ -57,9 +57,9 @@ set(MICROPY_SOURCE_PORT
     zephyr_storage.c
     mpthreadport.c
     modopenearable/modopenearable.c
-    modopenearable/status_led.cpp
-    modopenearable/parse_info.c
-    modopenearable/sensor.c
+    modopenearable/modstatus_led.cpp
+    modopenearable/modparse_info.c
+    modopenearable/modsensor.c
 )
 list(TRANSFORM MICROPY_SOURCE_PORT PREPEND ${MICROPY_PORT_DIR}/)
 
