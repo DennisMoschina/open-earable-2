@@ -411,6 +411,9 @@ public:
     int soft_reset(bool full_reset = false);
 
     uint8_t get_volume();
+    
+    int fdsp_safe_load(sl_address address, safe_load_params params, bool update_inactive = false);
+    int fdsp_safe_load(sl_address address, int n, uint32_t param, bool update_inactive = false);
 
 #if CONFIG_FDSP
     int fdsp_bank_select(uint8_t bank);
@@ -426,9 +429,6 @@ private:
     int fdsp_mute(bool active);
     int fdsp_set_volume(uint8_t volume);
     uint8_t fdsp_get_volume();
-
-    int fdsp_safe_load(sl_address address, safe_load_params params, bool update_inactive = false);
-    int fdsp_safe_load(sl_address address, int n, uint32_t param, bool update_inactive = false);
 
     const uint16_t address = DT_REG_ADDR(DT_NODELABEL(adau1860));
 
