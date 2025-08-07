@@ -6,6 +6,7 @@
 #include "modstatus_led.h"
 #include "modparse_info.h"
 #include "modsensor.h"
+#include "modaudiofilter.h"
 
 static mp_obj_t openearable_info(void) {
     mp_printf(&mp_plat_print, "OpenEarable MicroPython Module\n");
@@ -18,6 +19,8 @@ static MP_DEFINE_CONST_FUN_OBJ_1(openearable_set_led_mode_obj, openearable_set_l
 static MP_DEFINE_CONST_FUN_OBJ_0(openearable_get_sensor_schemes_obj, openearable_get_sensor_schemes);
 static MP_DEFINE_CONST_FUN_OBJ_3(openearable_config_sensor_obj, openearable_config_sensor);
 static MP_DEFINE_CONST_FUN_OBJ_2(openearable_on_data_received_obj, openearable_on_data_received);
+static MP_DEFINE_CONST_FUN_OBJ_2(set_eq_filter_obj, set_eq_filter);
+static MP_DEFINE_CONST_FUN_OBJ_2(set_anc_filter_obj, set_anc_filter);
 
 static const mp_rom_map_elem_t openearable_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR__name__), MP_OBJ_NEW_QSTR(MP_QSTR__openearable) },
@@ -27,6 +30,8 @@ static const mp_rom_map_elem_t openearable_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_get_sensor_schemes), MP_ROM_PTR(&openearable_get_sensor_schemes_obj) },
     { MP_ROM_QSTR(MP_QSTR_config_sensor), MP_ROM_PTR(&openearable_config_sensor_obj) },
     { MP_ROM_QSTR(MP_QSTR_on_data_received), MP_ROM_PTR(&openearable_on_data_received_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_anc_filter), MP_ROM_PTR(&set_anc_filter_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_eq_filter), MP_ROM_PTR(&set_eq_filter_obj) },
 };
 static MP_DEFINE_CONST_DICT(openearable_module_globals, openearable_module_globals_table);
 
