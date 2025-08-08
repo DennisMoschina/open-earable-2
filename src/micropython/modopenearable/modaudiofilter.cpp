@@ -89,3 +89,12 @@ mp_obj_t set_eq_filter(mp_obj_t filter_slot, mp_obj_t coeffs) {
 
     return mp_const_none;
 }
+
+mp_obj_t get_anc_sample_rate(void) {
+    // TODO: make this dynamic based on the actual ANC configuration
+    return mp_obj_new_int(192000);
+}
+mp_obj_t get_eq_sample_rate(void) {
+    // TODO: make this dynamic based on the actual EQ configuration
+    return mp_obj_new_int(48000);
+}

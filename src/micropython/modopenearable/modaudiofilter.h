@@ -11,6 +11,9 @@ extern "C" {
 mp_obj_t set_anc_filter(mp_obj_t filter_slot, mp_obj_t coeffs);
 mp_obj_t set_eq_filter(mp_obj_t filter_slot, mp_obj_t coeffs);
 
+mp_obj_t get_anc_sample_rate(void);
+mp_obj_t get_eq_sample_rate(void);
+
 #ifdef __cplusplus
 }
 #endif
