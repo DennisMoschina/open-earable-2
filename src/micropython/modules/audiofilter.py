@@ -10,9 +10,9 @@ class SlAddress:
     LIMITER_MASTER = 9
 
 class FilterType:
-    LOW_SHELF = 'low_shelf'
-    HIGH_SHELF = 'high_shelf'
-    PEAKING = 'peaking'
+    LOW_SHELF = 0
+    HIGH_SHELF = 1
+    PEAKING = 2
 
 def set_anc_filter(filter_address: SlAddress, b0, b1, b2, a1, a2):
     """
