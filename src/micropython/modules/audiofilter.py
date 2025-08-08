@@ -85,8 +85,8 @@ def _to_fixed_q27(coeffs):
     fixed = []
     for c in coeffs:
         x = c * _Q27
-        # round-to-nearest
-        y = round(x)
+        # round-to-lower
+        y = int(x)
         # clip to int32
         y = _clip_int32(y)
         fixed.append(y)
