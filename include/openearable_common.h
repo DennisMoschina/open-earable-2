@@ -97,7 +97,7 @@ enum sensor_consumer {
 	// don't use 0x10
 	SENSOR_CONSUMER_BLE = 0x01,
 	SENSOR_CONSUMER_SD = 0x02,
-	SENSOR_CONSUMER_MP = 0x04,
+	SENSOR_CONSUMER_PROCESSING = 0x04,
 };
 
 struct sensor_msg {
