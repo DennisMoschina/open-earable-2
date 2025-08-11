@@ -8,7 +8,7 @@ class SensorComponentExtractor: public SensorProcessingStage {
 public:
     SensorComponentExtractor(size_t group_index, size_t component_index, sensor_processing_stage_t *children, size_t child_count);
 
-    sensor_value_t process() override;
+    int process(sensor_value_t &out) override;
 
 private:
     size_t group_index;

@@ -15,7 +15,7 @@ public:
     SensorProcessingStage(size_t input_size, sensor_processing_stage_t *children, size_t child_count);
     ~SensorProcessingStage();
 
-    virtual sensor_value_t process() = 0;
+    virtual int process(sensor_value_t &out) = 0;
 
     void input(sensor_value_t value, size_t index);
 

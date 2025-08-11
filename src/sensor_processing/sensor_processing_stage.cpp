@@ -7,12 +7,12 @@ SensorProcessingStage::SensorProcessingStage(size_t input_size, sensor_processin
     : input_size(input_size), children(children), child_count(child_count) {
     input_buffer = new sensor_value_t[input_size];
     input_state = new bool[input_size];
+    memset(input_state, false, input_size * sizeof(bool));
 }
 
 SensorProcessingStage::~SensorProcessingStage() {
     delete[] input_buffer;
     delete[] input_state;
-    delete[] children;
 }
 
 void SensorProcessingStage::input(sensor_value_t value, size_t index) {
@@ -29,7 +29,16 @@ void SensorProcessingStage::input(sensor_value_t value, size_t index) {
         }
     }
 
-    sensor_value_t output = this->process();
+    sensor_value_t output;
+    int ret = this->process(output);
+
+    if (ret < 0) {
+        LOG_ERR("Processing failed with error code %d", ret);
+        return;
+    } else if (ret > 0) {
+        LOG_DBG("Processing returned %d, skipping ...", ret);
+        return;
+    }
 
     for (size_t i = 0; i < child_count; ++i) {
         if (children[i].stage) {
