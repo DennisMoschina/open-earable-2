@@ -6,4 +6,6 @@
 void set_processing_pipeline(SensorProcessingStage *stage, uint8_t sensor_id);
 void remove_processing_pipeline(uint8_t sensor_id);
 
+void sensor_processing_consumer_init(void);
+
 #endif
