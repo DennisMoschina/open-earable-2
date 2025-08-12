@@ -51,6 +51,7 @@ LOG_MODULE_REGISTER(main, CONFIG_MAIN_LOG_LEVEL);
 /* STEP 5.4 - Include header for USB */
 #include <zephyr/usb/usb_device.h>
 #include "../src/micropython/micropython.h"
+#include <sensor_processing_consumer.h>
 
 int main(void) {
 	int ret;
@@ -124,6 +125,8 @@ int main(void) {
 
 	ret = init_mp();
 	ERR_CHK(ret);
+
+	sensor_processing_consumer_init();
 
 	return 0;
 }
