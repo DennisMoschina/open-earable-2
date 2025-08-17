@@ -22,6 +22,8 @@ class SensorComponent:
     def __repr__(self):
         return "SensorComponent(name=" + str(self.name) + ", unit=" + str(self.unit) + ", parse_type=" + str(self.parse_type) + ")"
 
+    def copy(self):
+        return SensorComponent(name=self.name, unit=self.unit, parse_type=self.parse_type)
 
 # SensorComponentGroup class
 class SensorComponentGroup:
@@ -31,6 +33,9 @@ class SensorComponentGroup:
 
     def __repr__(self):
         return "SensorComponentGroup(name=" + str(self.name) + ", components=" + str(self.components) + ")"
+    
+    def copy(self):
+        return SensorComponentGroup(name=self.name, components=[c.copy() for c in self.components])
 
 
 # SensorConfigOptionsMasks (bitmask constants)
@@ -51,6 +56,9 @@ class FrequencyOptions:
     def __repr__(self):
         return "FrequencyOptions(frequencies=" + str(self.frequencies) + ", default_index=" + str(self.default_frequency_index) + ", max_ble_index=" + str(self.max_ble_frequency_index) + ")"
 
+    def copy(self):
+        return FrequencyOptions(frequencies=self.frequencies.copy(), default_index=self.default_frequency_index, max_ble_index=self.max_ble_frequency_index)
+
 # SensorConfigOptions class
 class SensorConfigOptions:
     def __init__(self, available_options: list[SensorConfigOptionsType], frequency_options: FrequencyOptions = None):
@@ -60,6 +68,8 @@ class SensorConfigOptions:
     def __repr__(self):
         return "SensorConfigOptions(available_options=" + str(self.available_options) + ", frequency_options=" + str(self.frequency_options) + ")"
     
+    def copy(self):
+        return SensorConfigOptions(available_options=self.available_options.copy(), frequency_options=self.frequency_options.copy() if self.frequency_options else None)
 
 # SensorScheme class
 class SensorScheme:
@@ -71,6 +81,9 @@ class SensorScheme:
 
     def __repr__(self):
         return "SensorScheme(name=" + str(self.name) + ", id=" + str(self.id) + ", groups=" + str(self.groups) + ", config_options=" + str(self.config_options) + ")"
+    
+    def copy(self):
+        return SensorScheme(name=self.name, sensor_id=self.id, groups=[g.copy() for g in self.groups], config_options=self.config_options.copy() if self.config_options else None)
 
 def get_sensor_schemes() -> list[SensorScheme]:
     raw_data = oe.get_sensor_schemes()  # Calls the C function returning list of tuples
