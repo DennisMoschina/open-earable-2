@@ -19,10 +19,9 @@ class Node:
         self.kind = kind
         self.in_port_count = in_port_count
 
-    def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme | None:
-        # TODO: throw error if scheme is invalid
+    def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme:
         if not len(schemes) == self.in_port_count:
-            return None
+            raise ValueError("Expected {} input schemes, got {}".format(self.in_port_count, len(schemes)))
         scheme = schemes[0].copy()
         scheme.config_options = None # remove config options as stage is not configurable
         return scheme
@@ -45,14 +44,12 @@ class PeakDetector(Node):
     def __init__(self, name: str):
         super().__init__(name, kind=NodeKind.PEAK_DETECTOR, in_port_count=1)
 
-    def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme | None:
+    def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme:
         scheme = super().scheme_transform(schemes)
-        if not scheme:
-            return None
         if len(scheme.groups) != 1:
-            return None
+            raise ValueError("PeakDetector requires exactly one group in the input scheme.")
         if len(scheme.groups[0].components) != 1:
-            return None
+            raise ValueError("PeakDetector requires exactly one component in the input group.")
         scheme = scheme.copy()
         scheme.groups[0].components.append(SensorComponent(
             name="peak",
@@ -65,15 +62,13 @@ class ZeroCrossingDetector(Node):
     def __init__(self, name: str):
         super().__init__(name, kind=NodeKind.ZERO_CROSSING, in_port_count=1)
 
-    def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme | None:
+    def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme:
         scheme = super().scheme_transform(schemes)
-        if not scheme:
-            return None
         scheme = scheme.copy()
         if len(scheme.groups) != 1:
-            return None
+            raise ValueError("ZeroCrossingDetector requires exactly one group in the input scheme.")
         if len(scheme.groups[0].components) != 1:
-            return None
+            raise ValueError("ZeroCrossingDetector requires exactly one component in the input group.")
         scheme.groups[0].components[0].parse_type = ParseType.INT8
         scheme.groups[0].components[0].unit = "zero_crossing"
         return scheme
@@ -123,7 +118,7 @@ class Source(Node):
         super().__init__(name, kind=NodeKind.SOURCE, in_port_count=0)
         self.sensor = sensor
 
-    def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme | None:
+    def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme:
         return self.sensor.scheme.copy()
 
 class Pipeline:
@@ -210,7 +205,7 @@ class Pipeline:
                 in_schemes.append(s.copy())
             out[n] = n.scheme_transform(in_schemes)
             if out[n] is None:
-                raise ValueError(f"Schema mismatch at node {n.name}")
+                raise ValueError("Schema mismatch at node {}".format(n.name))
 
         # 4) sink → its input scheme(s)
         result: dict[str, SensorScheme] = {}
@@ -222,7 +217,7 @@ class Pipeline:
                 continue
             schemes = [out.get(e.src) for e in in_edges]
             if any(s is None for s in schemes):
-                raise ValueError(f"Unresolved input at sink {name}")
+                raise ValueError("Unresolved input scheme at sink {}".format(name))
             # If your sinks are single-input, return the single scheme:
             result[name] = schemes[0]
             # If multi-input sinks are possible, you could return `schemes` (list)
