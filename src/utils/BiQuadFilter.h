@@ -10,7 +10,7 @@ public:
     BiQuadFilter();
     BiQuadFilter(int num_stages);
     void reset_filter();
-    void apply(int16_t * data, int length);
+    void apply(float * data, int length);
     void set_coefficients(float coefficients[][5], int stages);
 
 private:

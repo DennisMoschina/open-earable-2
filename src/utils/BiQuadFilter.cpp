@@ -69,7 +69,7 @@ void BiQuadFilter::set_coefficients(float coefficients[][5], int stages) {
     LOG_DBG("Biquad filter coefficients set for %d stages", stages_to_set);
 }
 
-void BiQuadFilter::apply(int16_t * data, int length) {
+void BiQuadFilter::apply(float * data, int length) {
     for (int n = 0; n < length; n+=2) {
         y[0] = data[n];
 
