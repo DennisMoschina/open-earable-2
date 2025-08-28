@@ -26,6 +26,13 @@ class Node:
         scheme.config_options = None # remove config options as stage is not configurable
         return scheme
 
+    def to_manifest(self, in_scheme: SensorScheme) -> dict:
+        return {
+            "name": self.name,
+            "kind": self.kind,
+            "in_port_count": self.in_port_count
+        }
+
     def __repr__(self):
         return f"Node(name={self.name}, kind={self.kind}, in_port_count={self.in_port_count})"
 
@@ -39,6 +46,22 @@ class BiQuadFilter(Node):
                 raise ValueError("Each stage must have exactly 5 coefficients.")
         self.stages = stages
         self.coeffs = coeffs
+
+    def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme:
+        scheme = super().scheme_transform(schemes)
+        if len(scheme.groups) != 1:
+            raise ValueError("BiQuadFilter requires exactly one group in the input scheme.")
+        if len(scheme.groups[0].components) != 1:
+            raise ValueError("BiQuadFilter requires exactly one component in the input group.")
+        scheme = scheme.copy()
+        scheme.groups[0].components[0].parse_type = ParseType.FLOAT
+        return scheme
+    
+    def to_manifest(self, in_scheme: SensorScheme) -> dict:
+        manifest = super().to_manifest(in_scheme)
+        manifest["stages"] = self.stages
+        manifest["coeffs"] = self.coeffs
+        return manifest
 
 class PeakDetector(Node):
     def __init__(self, name: str):
@@ -91,6 +114,18 @@ class ComponentExtractor(Node):
         if not scheme.groups[0].components:
             return None
         return scheme
+
+    def to_manifest(self, in_scheme: SensorScheme) -> dict:
+        manifest = super().to_manifest(in_scheme)
+
+        component_offset = 0
+        for g in in_scheme.groups:
+            for c in g.components:
+                if c.name == self.component and g.name == self.group:
+                    manifest["offset"] = component_offset
+                component_offset += c.parse_type.size()
+
+        return manifest
 
 class Edge:
     src: Node
@@ -166,13 +201,8 @@ class Pipeline:
             raise
         return self
 
-    def output_schemes(self) -> dict[str, SensorScheme]:
-        # 1) seed: source node -> sensor.scheme()
-        out: dict[Node, SensorScheme] = {}
-        for n in self._sources.values():
-            out[n] = n.sensor.scheme.copy()  # or n.sensor.get_scheme()
-
-        # 2) topo order (Kahn)
+    def _topo_sort(self) -> list[Node]:
+        # Kahn's algorithm for topological sorting
         nodes = list(self._nodes.values()) + list(self._sinks.values()) + list(self._sources.values())
         indeg: dict[Node,int] = {n:0 for n in nodes}
         for e in self._edges:
@@ -190,6 +220,17 @@ class Pipeline:
         if len(order) != len(nodes):
             raise ValueError("Cycle detected in processing pipeline.")
 
+        return order
+    
+    def _schemes_in_nodes(self) -> dict[Node, SensorScheme]:
+        # 1) seed: source node -> sensor.scheme()
+        out: dict[Node, SensorScheme] = {}
+        for n in self._sources.values():
+            out[n] = n.sensor.scheme.copy()  # or n.sensor.get_scheme()
+
+        # 2) topo order (Kahn)
+        order = self._topo_sort()
+
         # 3) forward propagate
         for n in order:
             if isinstance(n, Source) or isinstance(n, Sink):
@@ -206,6 +247,11 @@ class Pipeline:
             out[n] = n.scheme_transform(in_schemes)
             if out[n] is None:
                 raise ValueError("Schema mismatch at node {}".format(n.name))
+            
+        return out
+
+    def output_schemes(self) -> dict[str, SensorScheme]:
+        out = self._schemes_in_nodes()
 
         # 4) sink → its input scheme(s)
         result: dict[str, SensorScheme] = {}
@@ -223,3 +269,13 @@ class Pipeline:
             # If multi-input sinks are possible, you could return `schemes` (list)
             # or implement a merge operation here.
         return result
+    
+    def to_manifest(self) -> dict:
+        schemes = self._schemes_in_nodes()
+
+        manifest = {
+            "name": self.name,
+            "nodes": {n.name: n.to_manifest(schemes[n]) for n in self._topo_sort()},
+            "edges": [{"src": e.src.name, "dst": e.dst.name, "src_port": e.src_port} for e in self._edges]
+        }
+        return manifest

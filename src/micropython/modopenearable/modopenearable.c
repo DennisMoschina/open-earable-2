@@ -7,6 +7,7 @@
 #include "modparse_info.h"
 #include "modsensor.h"
 #include "modaudiofilter.h"
+#include "modpipeline_processing.h"
 
 static mp_obj_t openearable_info(void) {
     mp_printf(&mp_plat_print, "OpenEarable MicroPython Module\n");
@@ -23,6 +24,10 @@ static MP_DEFINE_CONST_FUN_OBJ_2(set_eq_filter_obj, set_eq_filter);
 static MP_DEFINE_CONST_FUN_OBJ_2(set_anc_filter_obj, set_anc_filter);
 static MP_DEFINE_CONST_FUN_OBJ_0(get_anc_sample_rate_obj, get_anc_sample_rate);
 static MP_DEFINE_CONST_FUN_OBJ_0(get_eq_sample_rate_obj, get_eq_sample_rate);
+static MP_DEFINE_CONST_FUN_OBJ_1(openearable_create_processing_pipeline_obj, openearable_create_processing_pipeline);
+static MP_DEFINE_CONST_FUN_OBJ_1(openearable_remove_processing_pipeline_obj, openearable_remove_processing_pipeline);
+static MP_DEFINE_CONST_FUN_OBJ_3(openearable_processing_pipeline_add_stage_obj, openearable_processing_pipeline_add_stage);
+static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(openearable_connect_stages_obj, 4, 4, openearable_connect_stages);
 
 static const mp_rom_map_elem_t openearable_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR__name__), MP_OBJ_NEW_QSTR(MP_QSTR__openearable) },
@@ -36,6 +41,10 @@ static const mp_rom_map_elem_t openearable_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_set_eq_filter), MP_ROM_PTR(&set_eq_filter_obj) },
     { MP_ROM_QSTR(MP_QSTR_get_anc_sample_rate), MP_ROM_PTR(&get_anc_sample_rate_obj) },
     { MP_ROM_QSTR(MP_QSTR_get_eq_sample_rate), MP_ROM_PTR(&get_eq_sample_rate_obj) },
+    { MP_ROM_QSTR(MP_QSTR_create_processing_pipeline), MP_ROM_PTR(&openearable_create_processing_pipeline_obj) },
+    { MP_ROM_QSTR(MP_QSTR_remove_processing_pipeline), MP_ROM_PTR(&openearable_remove_processing_pipeline_obj) },
+    { MP_ROM_QSTR(MP_QSTR_processing_pipeline_add_stage), MP_ROM_PTR(&openearable_processing_pipeline_add_stage_obj) },
+    { MP_ROM_QSTR(MP_QSTR_connect_stages), MP_ROM_PTR(&openearable_connect_stages_obj) },
 };
 static MP_DEFINE_CONST_DICT(openearable_module_globals, openearable_module_globals_table);
 

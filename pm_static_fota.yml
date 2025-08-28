@@ -44,14 +44,14 @@ mcuboot_secondary_1:
   size: 0x40000
   device: MX25R64
   region: external_flash
-external_flash:
-  address: 0x120000
-  size: 0x6e0000
-  device: MX25R64
-  region: external_flash
 micropython_lfs:
   address: 0x120000
   size: 0x100000
+  device: MX25R64
+  region: external_flash
+external_flash:
+  address: 0x220000
+  size: 0x5e0000
   device: MX25R64
   region: external_flash
 pcd_sram:

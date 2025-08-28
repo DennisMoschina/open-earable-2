@@ -18,7 +18,7 @@ ZBUS_CHAN_DECLARE(sensor_chan);
 
 static void sensor_data_received_callback(const struct zbus_channel *chan);
 ZBUS_LISTENER_DEFINE(mp_sensor_data_listener, sensor_data_received_callback);
-ZBUS_CHAN_ADD_OBS(sensor_chan, mp_sensor_data_listener, 3);
+// ZBUS_CHAN_ADD_OBS(sensor_chan, mp_sensor_data_listener, 3);
 
 static mp_obj_t sensor_data_callbacks[MAX_SENSORS] = {[0 ... MAX_SENSORS - 1] = MP_OBJ_NULL};
 
@@ -147,7 +147,7 @@ mp_obj_t parse_data(uint8_t sensor_id, uint64_t timestamp, uint8_t *data, size_t
 
 static void sensor_data_received_callback(const struct zbus_channel *chan) {
     const struct sensor_msg *msg = zbus_chan_const_msg(chan);
-    if (!msg || !(msg->consumer_mask & SENSOR_CONSUMER_MP)) {
+    if (!msg || !(msg->consumer_mask & SENSOR_CONSUMER_PROCESSING)) {
         return;
     }
 
@@ -215,21 +215,21 @@ static void sensor_worker_loop(void) {
 int init_mp_sensor(void) {
     int ret;
 
-    ret = k_mutex_init(&sensor_data_mutex);
-    if (ret != 0) {
-        LOG_ERR("Failed to initialize sensor data mutex: %d", ret);
-        return ret;
-    }
+    // ret = k_mutex_init(&sensor_data_mutex);
+    // if (ret != 0) {
+    //     LOG_ERR("Failed to initialize sensor data mutex: %d", ret);
+    //     return ret;
+    // }
 
-    mp_sensor_work_tid = k_thread_create(
-        &mp_sensor_work_thread, mp_sensor_work_stack,
-        K_THREAD_STACK_SIZEOF(mp_sensor_work_stack), (k_thread_entry_t)sensor_worker_loop,
-        NULL, NULL, NULL, K_PRIO_PREEMPT(6), 0, K_NO_WAIT);
-    ret = k_thread_name_set(mp_sensor_work_tid, "MP_SENSOR_WORK");
-    if (ret) {
-        LOG_ERR("Failed to create MP sensor worker thread: %d", ret);
-        return ret;
-    }
+    // mp_sensor_work_tid = k_thread_create(
+    //     &mp_sensor_work_thread, mp_sensor_work_stack,
+    //     K_THREAD_STACK_SIZEOF(mp_sensor_work_stack), (k_thread_entry_t)sensor_worker_loop,
+    //     NULL, NULL, NULL, K_PRIO_PREEMPT(6), 0, K_NO_WAIT);
+    // ret = k_thread_name_set(mp_sensor_work_tid, "MP_SENSOR_WORK");
+    // if (ret) {
+    //     LOG_ERR("Failed to create MP sensor worker thread: %d", ret);
+    //     return ret;
+    // }
 
     return 0;
 }

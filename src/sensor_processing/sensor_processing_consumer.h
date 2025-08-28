@@ -1,10 +1,11 @@
 #ifndef _SENSOR_PROCESSING_CONSUMER_H
 #define _SENSOR_PROCESSING_CONSUMER_H
 
-#include "sensor_processing_stage.h"
+#include "processing_pipeline.h"
 
-void set_processing_pipeline(SensorProcessingStage *stage, uint8_t sensor_id);
-void remove_processing_pipeline(uint8_t sensor_id);
+void set_processing_pipeline(const char *name, std::unique_ptr<ProcessingPipeline> pipeline);
+ProcessingPipeline* get_processing_pipeline(const char *name);
+void remove_processing_pipeline(const char *name);
 
 void sensor_processing_consumer_init(void);
 

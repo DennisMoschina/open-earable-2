@@ -3,35 +3,70 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(sensor_component_extractor, LOG_LEVEL_DBG);
 
-SensorComponentExtractor::SensorComponentExtractor(size_t group_index, size_t component_index,
-                                                     sensor_processing_stage_t *children, size_t child_count)
-    : SensorProcessingStage(1, children, child_count), group_index(group_index), component_index(component_index) {
+SensorComponentExtractor::SensorComponentExtractor(size_t offset, enum ParseType parse_type)
+    : SensorProcessingStage(1), offset(offset), parse_type(parse_type) {
 }
 
-int SensorComponentExtractor::process(sensor_value_t &out) {
-    sensor_value_t input_value = input_buffer[0];
+int SensorComponentExtractor::process(const struct sensor_data *const inputs[],
+                                      struct sensor_data *output) {
+    const struct sensor_data *input = inputs[0];
 
-    if (group_index >= input_value.group_count) {
-        LOG_ERR("Group index %zu out of bounds for input size %zu", group_index, input_value.group_count);
-        return -1; // Return an error code
+    // Copy metadata
+    *output = *input;
+
+    switch (this->parse_type) {
+        case PARSE_TYPE_UINT8: {
+            auto v = reinterpret_cast<const uint8_t*>(input->data)[this->offset];
+            *reinterpret_cast<uint8_t*>(output->data) = v;
+            output->size = sizeof(uint8_t);
+            break;
+        }
+        case PARSE_TYPE_INT8: {
+            auto v = reinterpret_cast<const int8_t*>(input->data)[this->offset];
+            *reinterpret_cast<int8_t*>(output->data) = v;
+            output->size = sizeof(int8_t);
+            break;
+        }
+        case PARSE_TYPE_UINT16: {
+            auto v = reinterpret_cast<const uint16_t*>(input->data)[this->offset];
+            *reinterpret_cast<uint16_t*>(output->data) = v;
+            output->size = sizeof(uint16_t);
+            break;
+        }
+        case PARSE_TYPE_INT16: {
+            auto v = reinterpret_cast<const int16_t*>(input->data)[this->offset];
+            *reinterpret_cast<int16_t*>(output->data) = v;
+            output->size = sizeof(int16_t);
+            break;
+        }
+        case PARSE_TYPE_UINT32: {
+            auto v = reinterpret_cast<const uint32_t*>(input->data)[this->offset];
+            *reinterpret_cast<uint32_t*>(output->data) = v;
+            output->size = sizeof(uint32_t);
+            break;
+        }
+        case PARSE_TYPE_INT32: {
+            auto v = reinterpret_cast<const int32_t*>(input->data)[this->offset];
+            *reinterpret_cast<int32_t*>(output->data) = v;
+            output->size = sizeof(int32_t);
+            break;
+        }
+        case PARSE_TYPE_FLOAT: {
+            auto v = reinterpret_cast<const float*>(input->data)[this->offset];
+            *reinterpret_cast<float*>(output->data) = v;
+            output->size = sizeof(float);
+            break;
+        }
+        case PARSE_TYPE_DOUBLE: {
+            auto v = reinterpret_cast<const double*>(input->data)[this->offset];
+            *reinterpret_cast<double*>(output->data) = v;
+            output->size = sizeof(double);
+            break;
+        }
+        default:
+            LOG_ERR("Unsupported parse type");
+            return -1;
     }
-
-    const sensor_value_group_t &group = input_value.groups[group_index];
-    if (component_index >= group.component_count) {
-        LOG_ERR("Component index %zu out of bounds for group with %zu components", component_index, group.component_count);
-        return -1; // Return an error code
-    }
-
-    sensor_value_component_t component = group.components[component_index];
-
-    out.group_count = 1;
-    out.groups = new sensor_value_group_t[1];
-    out.groups[0].name = group.name;
-    out.groups[0].component_count = 1;
-    out.groups[0].components = new sensor_value_component_t[1];
-    out.groups[0].components[0] = component;
-    out.name = "Extracted Component";
-    out.timestamp = input_value.timestamp;
 
     return 0;
 }

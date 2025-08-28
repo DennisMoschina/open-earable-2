@@ -1,8 +1,7 @@
 #include "sensor_processing_stage.h"
-#include "sensor_value.h"
-#include "sensor_parser.h"
+#include "processing_pipeline.h"
 
-#include "sample_rate_extractor.h"
+#include <map>
 
 #include <zephyr/kernel.h>
 #include <zephyr/zbus/zbus.h>
@@ -21,23 +20,22 @@ ZBUS_CHAN_ADD_OBS(sensor_chan, sensor_processing_sub, 3);
 K_THREAD_STACK_DEFINE(proc_stack, PROC_STACK_SIZE);
 static struct k_thread proc_thread;
 
-static SensorProcessingStage *processing_pipeline[256];
+static std::map<const char*, std::unique_ptr<ProcessingPipeline>> processing_pipelines;
 
-void set_processing_pipeline(SensorProcessingStage *stage, uint8_t sensor_id) {
-    if (sensor_id < 256) {
-        if (processing_pipeline[sensor_id]) {
-            LOG_DBG("Replacing existing processing pipeline for sensor ID %d", sensor_id);
-            delete processing_pipeline[sensor_id];
-        }
-        processing_pipeline[sensor_id] = stage;
-    }
+void set_processing_pipeline(const char *name, std::unique_ptr<ProcessingPipeline> pipeline) {
+    processing_pipelines[name] = std::move(pipeline);
 }
 
-void remove_processing_pipeline(uint8_t sensor_id) {
-    if (sensor_id < 256) {
-        delete processing_pipeline[sensor_id];
-        processing_pipeline[sensor_id] = nullptr;
+ProcessingPipeline* get_processing_pipeline(const char *name) {
+    auto it = processing_pipelines.find(name);
+    if (it != processing_pipelines.end()) {
+        return it->second.get();
     }
+    return nullptr;
+}
+
+void remove_processing_pipeline(const char *name) {
+    processing_pipelines.erase(name);
 }
 
 /* Dedicated consumer that blocks on the subscriber queue */
@@ -65,32 +63,18 @@ static void processing_thread(void *a, void *b, void *c)
             continue;
         }
 
-        SensorProcessingStage *pipeline = processing_pipeline[msg.data.id];
-        if (!pipeline) {
-            LOG_WRN("No processing pipeline set for sensor ID %d", msg.data.id);
-            continue;
+        for (auto &[name, pipeline] : processing_pipelines) {
+            if (pipeline) {
+                // TODO: handle output
+                pipeline->inject(msg.data);
+            }
         }
-
-        struct SensorScheme *scheme = getSensorSchemeForId(msg.data.id);
-        if (!scheme) {
-            LOG_WRN("No sensor scheme found for sensor ID %d", msg.data.id);
-            continue;
-        }
-
-        sensor_value_t input_value = parse_sensor_value(msg.data, scheme);
-
-        // Process the input value through the pipeline
-        pipeline->input(input_value, 0);
     }
 }
 
 /* Bring up the dedicated thread */
 int sensor_processing_consumer_init(void)
 {
-    for (size_t i = 0; i < 256; ++i) {
-        processing_pipeline[i] = nullptr;
-    }
-
     k_thread_create(&proc_thread, proc_stack, K_THREAD_STACK_SIZEOF(proc_stack),
                     processing_thread, NULL, NULL, NULL,
                     PROC_THREAD_PRIO, 0, K_NO_WAIT);

@@ -64,6 +64,7 @@ set(APP_INCLUDE_DIRS
     ${CMAKE_SOURCE_DIR}/src/file_system_access
     ${CMAKE_SOURCE_DIR}/src/littlefs_manager
     ${CMAKE_SOURCE_DIR}/src/SensorManager
+    ${CMAKE_SOURCE_DIR}/src/sensor_processing
 )
 
 zephyr_library_include_directories(${APP_INCLUDE_DIRS})

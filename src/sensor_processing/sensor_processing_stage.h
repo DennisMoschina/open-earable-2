@@ -1,36 +1,21 @@
 #ifndef _SENSOR_PROCESSING_STAGE_H
 #define _SENSOR_PROCESSING_STAGE_H
 
-#include "sensor_value.h"
-
-class SensorProcessingStage;
-
-typedef struct sensor_processing_stage {
-    SensorProcessingStage* stage;
-    size_t input_index;
-} sensor_processing_stage_t;
+#include "openearable_common.h"
 
 class SensorProcessingStage {
 public:
-    SensorProcessingStage(size_t input_size, sensor_processing_stage_t *children, size_t child_count);
-    ~SensorProcessingStage();
+    SensorProcessingStage(size_t in_ports);
+    virtual ~SensorProcessingStage() = default;
 
-    virtual int process(sensor_value_t &out) = 0;
+    virtual int process(const struct sensor_data *const input[], struct sensor_data *output) = 0;
 
-    void input(sensor_value_t value, size_t index);
-
-    size_t get_input_size() const {
-        return input_size;
+    size_t get_in_ports() const {
+        return in_ports;
     }
 
-protected:
-    sensor_value_t *input_buffer;
-    size_t input_size;
-
 private:
-    sensor_processing_stage_t *children;
-    size_t child_count;
-    bool *input_state;
+    size_t in_ports;
 };
 
 #endif // _SENSOR_PROCESSING_STAGE_H

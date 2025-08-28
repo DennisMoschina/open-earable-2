@@ -14,7 +14,7 @@ public:
     void set_coefficients(float coefficients[][5], int stages);
 
 private:
-    const int num_stages = 1;
+    int num_stages = 1;
     float c[MAX_FILTER_ORDER][5];          // Filter coefficients for each stage
     float eq_buffer[MAX_FILTER_ORDER][2];   // Filter state for each stage
     float y[MAX_FILTER_ORDER + 1];          // Temporary buffer for filter output

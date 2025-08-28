@@ -11,6 +11,25 @@ class ParseType:
     FLOAT = 6
     DOUBLE = 7
 
+    def size(self, parse_type: ParseType) -> int:
+        if parse_type == ParseType.INT8:
+            return 1
+        elif parse_type == ParseType.UINT8:
+            return 1
+        elif parse_type == ParseType.INT16:
+            return 2
+        elif parse_type == ParseType.UINT16:
+            return 2
+        elif parse_type == ParseType.INT32:
+            return 4
+        elif parse_type == ParseType.UINT32:
+            return 4
+        elif parse_type == ParseType.FLOAT:
+            return 4
+        elif parse_type == ParseType.DOUBLE:
+            return 8
+        return 0
+
 
 # SensorComponent class
 class SensorComponent:
