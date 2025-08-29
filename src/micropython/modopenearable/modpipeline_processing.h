@@ -10,7 +10,8 @@ extern "C" {
 mp_obj_t openearable_create_processing_pipeline(mp_obj_t name);
 mp_obj_t openearable_remove_processing_pipeline(mp_obj_t name);
 mp_obj_t openearable_processing_pipeline_add_stage(mp_obj_t pipeline_name, mp_obj_t stage_name, mp_obj_t stage);
-mp_obj_t openearable_connect_stages(size_t n_args, const mp_obj_t *args);
+mp_obj_t openearable_processing_pipeline_add_source(mp_obj_t pipeline_name, mp_obj_t stage_name, mp_obj_t stage);
+mp_obj_t openearable_connect_stages(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args);
 
 #ifdef __cplusplus
 }

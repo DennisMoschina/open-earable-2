@@ -11,22 +11,23 @@ class ParseType:
     FLOAT = 6
     DOUBLE = 7
 
-    def size(self, parse_type: ParseType) -> int:
-        if parse_type == ParseType.INT8:
+    @classmethod
+    def size(cls, parse_type: 'ParseType') -> int:
+        if parse_type == cls.INT8:
             return 1
-        elif parse_type == ParseType.UINT8:
+        elif parse_type == cls.UINT8:
             return 1
-        elif parse_type == ParseType.INT16:
+        elif parse_type == cls.INT16:
             return 2
-        elif parse_type == ParseType.UINT16:
+        elif parse_type == cls.UINT16:
             return 2
-        elif parse_type == ParseType.INT32:
+        elif parse_type == cls.INT32:
             return 4
-        elif parse_type == ParseType.UINT32:
+        elif parse_type == cls.UINT32:
             return 4
-        elif parse_type == ParseType.FLOAT:
+        elif parse_type == cls.FLOAT:
             return 4
-        elif parse_type == ParseType.DOUBLE:
+        elif parse_type == cls.DOUBLE:
             return 8
         return 0
 

@@ -62,7 +62,7 @@ set(MICROPY_SOURCE_PORT
     modopenearable/modsensor.c
     modopenearable/modaudiofilter.cpp
     modopenearable/modpipeline_processing.cpp
-    # modopenearable/pipeline_python_sink.cpp
+    modopenearable/pipeline_python_sink.cpp
 )
 list(TRANSFORM MICROPY_SOURCE_PORT PREPEND ${MICROPY_PORT_DIR}/)
 

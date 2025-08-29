@@ -1,5 +1,6 @@
 from sensor import Sensor
 from parse_info import ParseType, SensorScheme, SensorComponent
+import _openearable as oe
 
 class NodeKind:
     SOURCE = 0
@@ -33,6 +34,14 @@ class Node:
             "in_port_count": self.in_port_count
         }
 
+    def build(self, in_schemes: list[SensorScheme]) -> tuple:
+        if len(in_schemes) != self.in_port_count:
+            raise ValueError("Expected {} input schemes, got {}".format(self.in_port_count, len(in_schemes)))
+        return (self.kind, self.name) + self.build_args(in_schemes)
+
+    def build_args(self, in_schemes: list[SensorScheme]) -> tuple:
+        return ()
+
     def __repr__(self):
         return f"Node(name={self.name}, kind={self.kind}, in_port_count={self.in_port_count})"
 
@@ -63,6 +72,9 @@ class BiQuadFilter(Node):
         manifest["coeffs"] = self.coeffs
         return manifest
 
+    def build_args(self, in_schemes: list[SensorScheme]) -> tuple:
+        return (in_schemes[0].groups[0].components[0].parse_type, self.stages, self.coeffs)
+
 class PeakDetector(Node):
     def __init__(self, name: str):
         super().__init__(name, kind=NodeKind.PEAK_DETECTOR, in_port_count=1)
@@ -80,6 +92,9 @@ class PeakDetector(Node):
             unit="peak"
         ))
         return scheme
+    
+    def build_args(self, in_schemes: list[SensorScheme]) -> tuple:
+        return (in_schemes[0].groups[0].components[0].parse_type,)
 
 class ZeroCrossingDetector(Node):
     def __init__(self, name: str):
@@ -95,6 +110,9 @@ class ZeroCrossingDetector(Node):
         scheme.groups[0].components[0].parse_type = ParseType.INT8
         scheme.groups[0].components[0].unit = "zero_crossing"
         return scheme
+
+    def build_args(self, in_schemes: list[SensorScheme]) -> tuple:
+        return (in_schemes[0].groups[0].components[0].parse_type,)
 
 class ComponentExtractor(Node):
     def __init__(self, name: str, group: str, component: str):
@@ -123,9 +141,22 @@ class ComponentExtractor(Node):
             for c in g.components:
                 if c.name == self.component and g.name == self.group:
                     manifest["offset"] = component_offset
-                component_offset += c.parse_type.size()
+                component_offset += ParseType.size(c.parse_type)
 
         return manifest
+
+    def build_args(self, in_schemes: list[SensorScheme]) -> tuple:
+        comp_offset = 0
+        offset_ctr = 0
+        pt = 0
+        for g in in_schemes[0].groups:
+            for c in g.components:
+                if c.name == self.component and g.name == self.group:
+                    comp_offset = offset_ctr
+                    pt = c.parse_type
+                offset_ctr += ParseType.size(c.parse_type)
+
+        return (pt, comp_offset)
 
 class Edge:
     src: Node
@@ -148,6 +179,9 @@ class Sink(Node):
     def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme | None:
         return None
     
+    def build_args(self, in_schemes):
+        return (self.on_event,)
+
 class Source(Node):
     def __init__(self, name: str, sensor: Sensor):
         super().__init__(name, kind=NodeKind.SOURCE, in_port_count=0)
@@ -155,6 +189,9 @@ class Source(Node):
 
     def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme:
         return self.sensor.scheme.copy()
+
+    def build_args(self, in_schemes: list[SensorScheme]) -> tuple:
+        return (self.sensor.sensor_id,)
 
 class Pipeline:
     def __init__(self, name: str):
@@ -270,6 +307,15 @@ class Pipeline:
             # or implement a merge operation here.
         return result
     
+    def inputs(self, node: Node) -> list[Node]:
+        """
+        Get the input nodes for a given node.
+        The input nodes are sorted by their port.
+        """
+        edges = [e for e in self._edges if e.dst is node]
+        edges.sort(key=lambda e: e.src_port)
+        return [e.src for e in edges]
+
     def to_manifest(self) -> dict:
         schemes = self._schemes_in_nodes()
 
@@ -279,3 +325,19 @@ class Pipeline:
             "edges": [{"src": e.src.name, "dst": e.dst.name, "src_port": e.src_port} for e in self._edges]
         }
         return manifest
+
+    def build(self):
+        oe.create_processing_pipeline(self.name)
+        nodes = self._topo_sort()
+        out_schemes = self._schemes_in_nodes()
+
+        for node in nodes:
+            input_nodes = self.inputs(node)
+            input_schemes = [out_schemes[n] for n in input_nodes]
+            node_tpl = node.build(input_schemes)
+            if isinstance(node, Source):
+                oe.processing_pipeline_add_source(self.name, node.name, node_tpl)
+            oe.processing_pipeline_add_stage(self.name, node.name, node_tpl)
+
+        for edge in self._edges:
+            oe.connect_stages(self.name, edge.src.name, edge.dst.name, edge.src_port)
