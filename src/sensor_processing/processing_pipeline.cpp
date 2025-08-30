@@ -34,7 +34,8 @@ void ProcessingPipeline::add_stage(const char *name, std::unique_ptr<SensorProce
 //TODO: handle errors
 void ProcessingPipeline::connect(size_t src, size_t dst, size_t dst_port) {
     if (src < stages.size() && dst < stages.size()) {
-        stages[dst].inputs.push_back({src, dst_port});
+        stages[dst].inputs.push_back({src, dst, dst_port});
+        stages[src].outputs.push_back({src, dst, dst_port});
     }
 }
 
@@ -74,58 +75,87 @@ int ProcessingPipeline::run() {
     return run_from(0);
 }
 
-int ProcessingPipeline::run_from(size_t node_index) {
-    LOG_DBG("Running pipeline from node %d", node_index);
-    for (size_t i = node_index; i < this->stages.size(); ++i) {
+int ProcessingPipeline::run_from(size_t start_idx) {
+    if (start_idx >= stages.size()) return -EINVAL;
+    
+    std::queue<size_t> q;
+    
+    // Helper: enqueue all direct children of a node
+    auto enqueue_children = [&](size_t idx) {
+        for (const Edge& e : stages[idx].outputs) {
+            // e.dst is the child node index
+            if (e.dst < stages.size()) {
+                q.push(e.dst);
+            }
+        }
+    };
+
+    // The start node is already seeded (has_output=true) by inject().
+    // We begin by enqueueing its children.
+    enqueue_children(start_idx);
+
+    while (!q.empty()) {
+        size_t i = q.front();
+        q.pop();
+
         PipelineNode& node = stages[i];
-        size_t in_count = node.stage->get_in_ports();
+        const size_t in_count = node.stage->get_in_ports();
+
+        // SOURCE-LIKE NODES (0 inputs): don't try to resolve inputs
         if (in_count == 0) {
-            LOG_DBG("Node %s has no inputs, skipping", node.name);
+            // If this node already has output, just propagate to its children.
+            // (If you want, you could call node.stage->process(nullptr, &node.output) here.)
+            if (node.has_output) {
+                enqueue_children(i);
+            } else {
+                // Not seeded yet; nothing to do.
+                LOG_DBG("Node %s is a 0-input node without output; skipping", node.name);
+            }
             continue;
         }
-        std::vector<const sensor_data*> inputs(in_count);
 
-        bool ready = true;
-
-        // resolve upstream outputs
-        if (node.inputs.size() < in_count) {
-            LOG_ERR("Node %s: expected %zu inputs, but only %zu edges connected",
+        // Sanity: wiring must match declared ports
+        if (node.inputs.size() != in_count) {
+            LOG_ERR("Node %s: expected %zu inputs, but have %zu",
                     node.name, in_count, node.inputs.size());
-            ready = false;
-        } else {
-            for (size_t port = 0; port < in_count; ++port) {
-                Edge& e = node.inputs[port];
-                LOG_DBG("Node %s: resolving input %zu from node %zu, port %zu",
-                        node.name, port, e.src, e.dstPort);
-                if (!stages[e.src].has_output) {
-                    ready = false;
-                    break;
-                }
-                inputs[port] = &stages[e.src].output;
+            continue;  // or return -EINVAL;
+        }
+
+        // Resolve inputs from upstream nodes
+        std::vector<const sensor_data*> inputs(in_count);
+        bool ready = true;
+        for (size_t p = 0; p < in_count; ++p) {
+            const Edge& e = node.inputs[p];
+            if (e.src >= stages.size() || !stages[e.src].has_output) {
+                ready = false;
+                break;
             }
+            inputs[p] = &stages[e.src].output;
         }
 
         if (!ready) {
-            // not ready to process
-            LOG_DBG("Node %s not ready, skipping", node.name);
+            // Upstreams not ready yet; skip for now.
+            // (Optional: you can re-enqueue i later if you keep a scheduler.)
+            LOG_DBG("Node %s not ready; skipping", node.name);
             continue;
         }
 
-        // call stage
+        // Process the node
         int rc = node.stage->process(inputs.data(), &node.output);
-
         if (rc < 0) {
-            // error case
+            LOG_ERR("Error processing node %s: %d", node.name, rc);
+            // Error from stage
             return rc;
         } else if (rc > 0) {
-            // no new result: mark node as "inactive"
             node.has_output = false;
             continue;
         } else {
-            // valid result
+            // Valid result produced
             node.has_output = true;
+            enqueue_children(i);
         }
     }
+
     return 0;
 }
 

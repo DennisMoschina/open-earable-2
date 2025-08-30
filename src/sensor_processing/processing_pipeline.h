@@ -9,6 +9,7 @@
 
 struct Edge {
     size_t src;     // index of source node
+    size_t dst;     // index of destination node
     size_t dstPort; // input port on the destination
 };
 
@@ -16,6 +17,7 @@ struct PipelineNode {
     const char *name;
     std::unique_ptr<SensorProcessingStage> stage;
     std::vector<Edge> inputs;     // edges feeding into this node
+    std::vector<Edge> outputs;    // edges feeding out of this node
     struct sensor_data output;           // stage result (cached for children)
     bool has_output = false; // true if the stage produced a valid output
 };
