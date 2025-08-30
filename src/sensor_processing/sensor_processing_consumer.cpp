@@ -7,7 +7,7 @@
 #include <zephyr/zbus/zbus.h>
 
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(sensor_processing_consumer, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(sensor_processing_consumer, LOG_LEVEL_WRN);
 
 ZBUS_SUBSCRIBER_DEFINE(sensor_processing_sub, 16);
 ZBUS_CHAN_DECLARE(sensor_chan);

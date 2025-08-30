@@ -17,57 +17,64 @@ BiQuadFilterStage::~BiQuadFilterStage() {
 
 int BiQuadFilterStage::process(const struct sensor_data *const input[],
                                struct sensor_data *output) {
-    // Copy metadata (id, timestamp, etc.)
+    // Copy metadata
     *output = *input[0];
-    output->size = sizeof(float);   // we always output float
+    output->size = sizeof(float);
+
     float x = 0.0f;
 
     switch (parse_type) {
         case PARSE_TYPE_UINT8: {
-            uint8_t v = *reinterpret_cast<const uint8_t*>(input[0]->data);
+            uint8_t v;
+            memcpy(&v, input[0]->data, sizeof(v));
             x = static_cast<float>(v);
             break;
         }
         case PARSE_TYPE_INT8: {
-            int8_t v = *reinterpret_cast<const int8_t*>(input[0]->data);
+            int8_t v;
+            memcpy(&v, input[0]->data, sizeof(v));
             x = static_cast<float>(v);
             break;
         }
         case PARSE_TYPE_UINT16: {
-            uint16_t v = *reinterpret_cast<const uint16_t*>(input[0]->data);
+            uint16_t v;
+            memcpy(&v, input[0]->data, sizeof(v));
             x = static_cast<float>(v);
             break;
         }
         case PARSE_TYPE_INT16: {
-            int16_t v = *reinterpret_cast<const int16_t*>(input[0]->data);
+            int16_t v;
+            memcpy(&v, input[0]->data, sizeof(v));
             x = static_cast<float>(v);
             break;
         }
         case PARSE_TYPE_UINT32: {
-            uint32_t v = *reinterpret_cast<const uint32_t*>(input[0]->data);
+            uint32_t v;
+            memcpy(&v, input[0]->data, sizeof(v));
             x = static_cast<float>(v);
             break;
         }
         case PARSE_TYPE_INT32: {
-            int32_t v = *reinterpret_cast<const int32_t*>(input[0]->data);
+            int32_t v;
+            memcpy(&v, input[0]->data, sizeof(v));
             x = static_cast<float>(v);
             break;
         }
         case PARSE_TYPE_DOUBLE: {
-            double v = *reinterpret_cast<const double*>(input[0]->data);
+            double v;
+            memcpy(&v, input[0]->data, sizeof(v));
             x = static_cast<float>(v);
             break;
         }
         default:
-            return -EINVAL; // unknown type
+            return -EINVAL;
     }
 
-    // Filter expects a float array
     float y = x;
     filter.apply(&y, 1);
 
-    // Store result back as float (4 bytes)
-    *reinterpret_cast<float*>(output->data) = y;
+    // Write back safely
+    memcpy(output->data, &y, sizeof(float));
 
     return 0;
 }

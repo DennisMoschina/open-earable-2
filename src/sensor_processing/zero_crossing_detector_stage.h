@@ -6,14 +6,14 @@
 
 class ZeroCrossingDetectorStage : public SensorProcessingStage {
 public:
-    ZeroCrossingDetectorStage(enum ParseType parse_type);
+    explicit ZeroCrossingDetectorStage(enum ParseType parse_type);
 
     int process(const struct sensor_data *const inputs[], struct sensor_data *output) override;
 
 private:
-    struct sensor_data last_value;
-    bool is_initialized;
     enum ParseType parse_type;
+    bool is_initialized;
+    double last_scalar;   // previous sample as a scalar (no borrowed pointers)
 };
 
 #endif // _ZERO_CROSSING_DETECTOR_STAGE_H
