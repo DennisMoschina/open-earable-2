@@ -180,7 +180,7 @@ class Sink(Node):
         return None
     
     def build_args(self, in_schemes):
-        return (self.on_event,)
+        return (self.on_event, in_schemes[0])
 
 class Source(Node):
     def __init__(self, name: str, sensor: Sensor):
@@ -337,7 +337,8 @@ class Pipeline:
             node_tpl = node.build(input_schemes)
             if isinstance(node, Source):
                 oe.processing_pipeline_add_source(self.name, node.name, node_tpl)
-            oe.processing_pipeline_add_stage(self.name, node.name, node_tpl)
+            else:
+                oe.processing_pipeline_add_stage(self.name, node.name, node_tpl)
 
         for edge in self._edges:
             oe.connect_stages(self.name, edge.src.name, edge.dst.name, edge.src_port)

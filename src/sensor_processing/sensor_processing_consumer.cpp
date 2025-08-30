@@ -7,7 +7,7 @@
 #include <zephyr/zbus/zbus.h>
 
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(sensor_processing_consumer, LOG_LEVEL_WRN);
+LOG_MODULE_REGISTER(sensor_processing_consumer, LOG_LEVEL_DBG);
 
 ZBUS_SUBSCRIBER_DEFINE(sensor_processing_sub, 16);
 ZBUS_CHAN_DECLARE(sensor_chan);
@@ -65,6 +65,7 @@ static void processing_thread(void *a, void *b, void *c)
 
         for (auto &[name, pipeline] : processing_pipelines) {
             if (pipeline) {
+                LOG_DBG("Injecting sample into pipeline %s", name);
                 // TODO: handle output
                 pipeline->inject(msg.data);
             }

@@ -7,16 +7,28 @@
 LOG_MODULE_REGISTER(processing_pipeline, LOG_LEVEL_DBG);
 
 ProcessingPipeline::ProcessingPipeline() {
-    // Initialize the processing pipeline
+    // Initialize the source_map
+    this->source_map = std::map<uint8_t, std::vector<size_t>>{};
+    this->stages = std::vector<PipelineNode>{};
 }
 
-void ProcessingPipeline::add_source(const char *name, std::unique_ptr<SensorProcessingStage> source) {
-    source_map[source->get_in_ports()].push_back(stages.size());
-    stages.push_back({name, std::move(source), {}, {}});
-}
+void ProcessingPipeline::add_source(const char *name, std::unique_ptr<SensorSourceStage> source) {
+    uint8_t sensor_id = source->get_sensor_id();
 
+    // check if source_map already has an entry for this sensor ID
+    if (this->source_map.find(sensor_id) == this->source_map.end()) {
+        LOG_DBG("Registering new source ID %d", sensor_id);
+        this->source_map[sensor_id] = {};
+    }
+
+    this->source_map[sensor_id].push_back(this->stages.size());
+    this->stages.push_back({name, std::move(source), {}, {}});
+    LOG_DBG("Added source %s for sensor ID %d", name, sensor_id);
+}
+    
 void ProcessingPipeline::add_stage(const char *name, std::unique_ptr<SensorProcessingStage> stage) {
     stages.push_back({name, std::move(stage), {}, {}});
+    LOG_DBG("Added stage %s", name);
 }
 
 //TODO: handle errors
@@ -41,21 +53,21 @@ void ProcessingPipeline::connect(const char* src, const char *dest, size_t dst_p
 }
 
 int ProcessingPipeline::inject(const struct sensor_data& sample) {
-    int ret = 0;
-    // Find source stage with matching id
-    for (size_t src_idx : source_map[sample.id]) {
-        stages[src_idx].output = sample;
-        stages[src_idx].has_output = true;
-
-        // Execute downstream stages starting from this node
-        ret = run_from(src_idx);
-        if (ret < 0) {
-            LOG_ERR("Failed to run from source stage: %d", ret);
-            return ret;
-        }
+    auto it = source_map.find(sample.id);
+    if (it == source_map.end() || it->second.empty()) {
+        return -EINVAL; // no matching source
     }
 
-    return -EINVAL; // no matching source found
+    for (size_t src_idx : it->second) {
+        // Seed source output
+        stages[src_idx].output     = sample;
+        stages[src_idx].has_output = true;
+
+        // Propagate from this source
+        int rc = run_from(src_idx);
+        if (rc < 0) return rc;
+    }
+    return 0;
 }
 
 int ProcessingPipeline::run() {
@@ -63,25 +75,39 @@ int ProcessingPipeline::run() {
 }
 
 int ProcessingPipeline::run_from(size_t node_index) {
-    for (size_t i = node_index; i < stages.size(); ++i) {
+    LOG_DBG("Running pipeline from node %d", node_index);
+    for (size_t i = node_index; i < this->stages.size(); ++i) {
         PipelineNode& node = stages[i];
         size_t in_count = node.stage->get_in_ports();
+        if (in_count == 0) {
+            LOG_DBG("Node %s has no inputs, skipping", node.name);
+            continue;
+        }
         std::vector<const sensor_data*> inputs(in_count);
 
         bool ready = true;
 
         // resolve upstream outputs
-        for (size_t port = 0; port < in_count; ++port) {
-            Edge& e = node.inputs[port];
-            if (!stages[e.src].has_output) {
-                ready = false;
-                break;
+        if (node.inputs.size() < in_count) {
+            LOG_ERR("Node %s: expected %zu inputs, but only %zu edges connected",
+                    node.name, in_count, node.inputs.size());
+            ready = false;
+        } else {
+            for (size_t port = 0; port < in_count; ++port) {
+                Edge& e = node.inputs[port];
+                LOG_DBG("Node %s: resolving input %zu from node %zu, port %zu",
+                        node.name, port, e.src, e.dstPort);
+                if (!stages[e.src].has_output) {
+                    ready = false;
+                    break;
+                }
+                inputs[port] = &stages[e.src].output;
             }
-            inputs[port] = &stages[e.src].output;
         }
 
         if (!ready) {
             // not ready to process
+            LOG_DBG("Node %s not ready, skipping", node.name);
             continue;
         }
 

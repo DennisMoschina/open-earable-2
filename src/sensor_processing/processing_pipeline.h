@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include "sensor_processing_stage.h"
+#include "sensor_source_stage.h"
 
 struct Edge {
     size_t src;     // index of source node
@@ -23,7 +24,7 @@ class ProcessingPipeline {
 public:
     ProcessingPipeline();
 
-    void add_source(const char *name, std::unique_ptr<SensorProcessingStage> source);
+    void add_source(const char *name, std::unique_ptr<SensorSourceStage> source);
 
     void add_stage(const char *name, std::unique_ptr<SensorProcessingStage> stage);
     void connect(size_t src, size_t dst, size_t dst_port = 0);
