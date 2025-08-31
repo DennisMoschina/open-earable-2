@@ -1,6 +1,10 @@
 #ifndef PIPELINE_PYTHON_SINK_H
 #define PIPELINE_PYTHON_SINK_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "sensor_processing_stage.h"
 #include "SensorScheme.h"
 #include "py/obj.h"
@@ -17,10 +21,10 @@ private:
     
     mp_obj_t py_callback; // Python callback to be called with processed data
 
-    mp_obj_t sensor_value_prototype;
-
-    mp_obj_t parse_data(const struct sensor_data *data);
-
 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // PIPELINE_PYTHON_SINK_H
