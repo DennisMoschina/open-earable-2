@@ -70,7 +70,7 @@ void BiQuadFilter::set_coefficients(float coefficients[][5], int stages) {
 }
 
 void BiQuadFilter::apply(float * data, int length) {
-    for (int n = 0; n < length; n+=2) {
+    for (int n = 0; n < length; n++) {
         y[0] = data[n];
 
         #pragma unroll
