@@ -1,7 +1,7 @@
 #include "zero_crossing_detector_stage.h"
 #include <cstring>            // memcpy
 #include "zephyr/logging/log.h"
-LOG_MODULE_REGISTER(zero_crossing_detector_stage, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(zero_crossing_detector_stage, LOG_LEVEL_WRN);
 
 static inline int8_t sign_crossing(double last, double cur) {
     if (last < 0 && cur > 0)  return  1; // rising through zero
