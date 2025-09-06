@@ -14,6 +14,7 @@
 #include "sensor_source_stage.h"
 #include "pipeline_python_sink.h"
 #include "zero_crossing_detector_stage.h"
+#include "peak_detector_stage.h"
 #include "biquad_filter_stage.h"
 #include "sensor_component_extractor.h"
 
@@ -326,9 +327,12 @@ int build_processing_stage(mp_obj_t stage, SensorProcessingStage *&out_stage) {
         if (ret) return ret;
         return 0;
     }
-    // case STAGE_PEAK:
-    //     sensor_stage = new PeakDetectorStage();
-    //     return 0;
+    case STAGE_PEAK: {
+        if (len < 1) return -EINVAL;
+        enum ParseType parse_type = (ParseType)mp_obj_get_int(arr[0]);
+        out_stage = new PeakDetectorStage(parse_type);
+        return 0;
+    }
     case STAGE_ZC: {
         if (len < 1) return -EINVAL;
         enum ParseType parse_type = (ParseType)mp_obj_get_int(arr[0]);

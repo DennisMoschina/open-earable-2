@@ -1,5 +1,8 @@
 #include "biquad_filter_stage.h"
 
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(biquad_filter_stage, LOG_LEVEL_DBG);
+
 BiQuadFilterStage::BiQuadFilterStage(enum ParseType input_type, BiQuadFilter &filter) : SensorProcessingStage(1) {
     this->filter = filter;
     this->parse_type = input_type;
@@ -60,6 +63,12 @@ int BiQuadFilterStage::process(const struct sensor_data *const input[],
             x = static_cast<float>(v);
             break;
         }
+        case PARSE_TYPE_FLOAT: {
+            float v;
+            memcpy(&v, input[0]->data, sizeof(v));
+            x = v;
+            break;
+        }
         case PARSE_TYPE_DOUBLE: {
             double v;
             memcpy(&v, input[0]->data, sizeof(v));
@@ -67,6 +76,7 @@ int BiQuadFilterStage::process(const struct sensor_data *const input[],
             break;
         }
         default:
+            LOG_ERR("Unsupported parse type %d", parse_type);
             return -EINVAL;
     }
 

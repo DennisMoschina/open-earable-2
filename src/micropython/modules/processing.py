@@ -86,8 +86,9 @@ class PeakDetector(Node):
         if len(scheme.groups[0].components) != 1:
             raise ValueError("PeakDetector requires exactly one component in the input group.")
         scheme = scheme.copy()
+        peak_comp_name = "{}_peak".format(scheme.groups[0].components[0].name)
         scheme.groups[0].components.append(SensorComponent(
-            name="peak",
+            name=peak_comp_name,
             parse_type=ParseType.INT8,
             unit="peak"
         ))
