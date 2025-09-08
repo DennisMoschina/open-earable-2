@@ -9,16 +9,16 @@ static inline int8_t sign_crossing(double last, double cur) {
     return 0;
 }
 
-static inline double decode_as_double(ParseType t, const uint8_t* p) {
+static inline float decode_as_float(ParseType t, const uint8_t* p) {
     switch (t) {
-        case PARSE_TYPE_UINT8:  { uint8_t  v; std::memcpy(&v, p, sizeof(v)); return (double)v; }
-        case PARSE_TYPE_INT8:   { int8_t   v; std::memcpy(&v, p, sizeof(v)); return (double)v; }
-        case PARSE_TYPE_UINT16: { uint16_t v; std::memcpy(&v, p, sizeof(v)); return (double)v; }
-        case PARSE_TYPE_INT16:  { int16_t  v; std::memcpy(&v, p, sizeof(v)); return (double)v; }
-        case PARSE_TYPE_UINT32: { uint32_t v; std::memcpy(&v, p, sizeof(v)); return (double)v; }
-        case PARSE_TYPE_INT32:  { int32_t  v; std::memcpy(&v, p, sizeof(v)); return (double)v; }
-        case PARSE_TYPE_FLOAT:  { float    v; std::memcpy(&v, p, sizeof(v)); return (double)v; }
-        case PARSE_TYPE_DOUBLE: { double   v; std::memcpy(&v, p, sizeof(v)); return v; }
+        case PARSE_TYPE_UINT8:  { uint8_t  v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
+        case PARSE_TYPE_INT8:   { int8_t   v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
+        case PARSE_TYPE_UINT16: { uint16_t v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
+        case PARSE_TYPE_INT16:  { int16_t  v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
+        case PARSE_TYPE_UINT32: { uint32_t v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
+        case PARSE_TYPE_INT32:  { int32_t  v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
+        case PARSE_TYPE_FLOAT:  { float    v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
+        case PARSE_TYPE_DOUBLE: { double   v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
         default:
             LOG_ERR("Unsupported parse type %d", t);
             return 0.0;
@@ -36,7 +36,7 @@ int ZeroCrossingDetectorStage::process(const struct sensor_data *const inputs[],
     const struct sensor_data* in = inputs[0];
 
     // Decode current sample into a scalar safely (handles unaligned buffers)
-    double cur = decode_as_double(parse_type, in->data);
+    float cur = decode_as_float(parse_type, in->data);
 
     LOG_DBG("Time: %lld Value: %f", in->time, cur);
     

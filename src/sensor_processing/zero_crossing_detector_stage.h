@@ -13,7 +13,7 @@ public:
 private:
     enum ParseType parse_type;
     bool is_initialized;
-    double last_scalar;   // previous sample as a scalar (no borrowed pointers)
+    float last_scalar;   // previous sample as a scalar (no borrowed pointers)
 };
 
 #endif // _ZERO_CROSSING_DETECTOR_STAGE_H
