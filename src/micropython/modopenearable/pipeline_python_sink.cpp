@@ -1,7 +1,6 @@
 #include "pipeline_python_sink.h"
 
 #include <stdlib.h>
-// sensor_bridge.c
 #include "py/obj.h"
 #include "py/runtime.h"
 #include "py/objstr.h"
@@ -35,5 +34,5 @@ PipelinePythonSink::~PipelinePythonSink() {
 
 int PipelinePythonSink::process(const struct sensor_data *const inputs[], struct sensor_data *output) {
     call_callback(this->py_callback, inputs[0], &data_scheme);
-    return 0;
+    return 1; // always return 1 to indicate we did not produce output data
 }
