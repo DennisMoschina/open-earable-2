@@ -8,16 +8,17 @@ ppg = oe.get_sensor(4)
 zero_crossings: list[tuple[int, int]] = []
 
 def calc_hr(sensor_value: oe.SensorValue):
+    global zero_crossings
     zero_crossings.append((sensor_value.timestamp, sensor_value.groups[0].components[0].value))
     if len(zero_crossings) < 10:
         return
-    
-    # calculate the avg timedifference between the positive zero crossings
-    positive_crossings = [ts for ts, val in zero_crossings if val == 1]
-    if len(positive_crossings) < 2:
+
+    # calculate the avg timedifference between the negative zero crossings
+    negative_crossings = [ts for ts, val in zero_crossings if val < 0]
+    if len(negative_crossings) < 2:
         return
 
-    avg_dt = sum(positive_crossings[i] - positive_crossings[i - 1] for i in range(1, len(positive_crossings))) / (len(positive_crossings) - 1)
+    avg_dt = sum(negative_crossings[i] - negative_crossings[i - 1] for i in range(1, len(negative_crossings))) / (len(negative_crossings) - 1)
     bpm = 60.0 / (avg_dt / 1000000.0)  # convert µs to s
 
     print("Estimated BPM: {:.2f}".format(bpm))
