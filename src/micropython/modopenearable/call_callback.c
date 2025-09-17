@@ -13,17 +13,14 @@ LOG_MODULE_REGISTER(call_callback, LOG_LEVEL_DBG);
 #include "py/objlist.h"
 #include "SensorScheme.h"
 
-// ---- Mutex (statically initialized) ----
-K_MUTEX_DEFINE(call_mutex);
-
 // ---- Per-call context passed to the scheduled thunk ----
 struct cb_ctx {
+    void *fifo_reserved;
     mp_obj_t cb;                        // Python callback
     const struct SensorScheme *scheme;  // owned elsewhere (sink)
     struct sensor_data sd;              // shallow copy of header
 };
-
-struct cb_ctx *ctx = NULL;
+K_FIFO_DEFINE(cb_fifo);
 
 // ---- Cached Python class refs (loaded once) ----
 static mp_obj_t cls_SensorValue         = MP_OBJ_NULL;
@@ -170,7 +167,9 @@ static mp_obj_t parse_data(const struct SensorScheme *scheme, const struct senso
 
 // Scheduled thunk: arg carries a pointer to cb_ctx as an integer object
 static mp_obj_t call_cb_py(mp_obj_t arg) {
-    k_mutex_lock(&call_mutex, K_FOREVER);
+    ARG_UNUSED(arg);
+
+    struct cb_ctx *ctx = k_fifo_get(&cb_fifo, K_NO_WAIT);
     if (!ctx) {
         LOG_ERR("call_cb_py: no context");
         return mp_const_none;
@@ -179,8 +178,6 @@ static mp_obj_t call_cb_py(mp_obj_t arg) {
     mp_call_function_1(ctx->cb, d);
 
     k_free(ctx);
-    ctx = NULL;
-    k_mutex_unlock(&call_mutex);
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(call_cb_py_obj, call_cb_py);
@@ -189,10 +186,8 @@ void call_callback(mp_obj_t callback,
                    const struct sensor_data *data,
                    const struct SensorScheme *scheme)
 {
-    k_mutex_lock(&call_mutex, K_FOREVER);
-    ctx = (struct cb_ctx *)k_malloc(sizeof(struct cb_ctx));
+    struct cb_ctx *ctx = (struct cb_ctx *)k_malloc(sizeof(struct cb_ctx));
     if (!ctx) {
-        k_mutex_unlock(&call_mutex);
         LOG_ERR("ctx alloc failed");
         return;
     }
@@ -212,6 +207,6 @@ void call_callback(mp_obj_t callback,
     }
     ctx->sd.size = n;
 
+    k_fifo_put(&cb_fifo, ctx);
     mp_sched_schedule(MP_OBJ_FROM_PTR(&call_cb_py_obj), mp_const_none);
-    k_mutex_unlock(&call_mutex);
 }
