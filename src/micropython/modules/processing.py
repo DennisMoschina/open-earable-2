@@ -9,6 +9,7 @@ class NodeKind:
     PEAK_DETECTOR = 3
     ZERO_CROSSING = 4
     COMPONENT_EXTRACTOR = 5
+    SWITCH = 6
 
 class Node:
     name: str
@@ -158,6 +159,35 @@ class ComponentExtractor(Node):
                 offset_ctr += ParseType.size(c.parse_type)
 
         return (pt, comp_offset)
+
+class SwitchStage(Node):
+    def __init__(self, name: str, hysteresis: (float, float)):
+        super().__init__(name=name, kind=NodeKind.SWITCH, in_port_count=1)
+        self.hysteresis_low = hysteresis[0]
+        self.hysteresis_high = hysteresis[1]
+
+    def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme:
+        scheme = super().scheme_transform(schemes)
+        if len(scheme.groups) != 1:
+            raise ValueError("SwitchStage requires exactly one group in the input scheme.")
+        if len(scheme.groups[0].components) != 1:
+            raise ValueError("SwitchStage requires exactly one component in the input group.")
+        scheme = scheme.copy()
+        scheme.groups[0].components.append(SensorComponent(
+            name="switch",
+            parse_type=ParseType.UINT8,
+            unit="switch"
+        ))
+        return scheme
+
+    def to_manifest(self, in_scheme: SensorScheme) -> dict:
+        manifest = super().to_manifest(in_scheme)
+        manifest["hysteresis_low"] = self.hysteresis_low
+        manifest["hysteresis_high"] = self.hysteresis_high
+        return manifest
+
+    def build_args(self, in_schemes: list[SensorScheme]) -> tuple:
+        return (in_schemes[0].groups[0].components[0].parse_type, self.hysteresis_low, self.hysteresis_high)
 
 class Edge:
     src: Node
