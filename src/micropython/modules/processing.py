@@ -77,8 +77,10 @@ class BiQuadFilter(Node):
         return (in_schemes[0].groups[0].components[0].parse_type, self.stages, self.coeffs)
 
 class PeakDetector(Node):
-    def __init__(self, name: str):
+    def __init__(self, name: str, eps: float = 0.0, maxOpen: int = 16):
         super().__init__(name, kind=NodeKind.PEAK_DETECTOR, in_port_count=1)
+        self.eps = eps
+        self.maxOpen = maxOpen
 
     def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme:
         scheme = super().scheme_transform(schemes)
@@ -93,10 +95,15 @@ class PeakDetector(Node):
             parse_type=ParseType.INT8,
             unit="peak"
         ))
+        scheme.groups[0].components.append(SensorComponent(
+            name="{}_prominence".format(scheme.groups[0].components[0].name),
+            parse_type=ParseType.FLOAT,
+            unit=scheme.groups[0].components[0].unit
+        ))
         return scheme
     
     def build_args(self, in_schemes: list[SensorScheme]) -> tuple:
-        return (in_schemes[0].groups[0].components[0].parse_type,)
+        return (in_schemes[0].groups[0].components[0].parse_type, self.eps, self.maxOpen)
 
 class ZeroCrossingDetector(Node):
     def __init__(self, name: str):
