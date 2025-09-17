@@ -17,6 +17,7 @@
 #include "peak_detector_stage.h"
 #include "biquad_filter_stage.h"
 #include "sensor_component_extractor.h"
+#include "switch_stage.h"
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(openearable_modpipeline_processing, LOG_LEVEL_DBG);
@@ -45,7 +46,8 @@ enum ProcessingStageKind {
     STAGE_BIQUAD = 2,
     STAGE_PEAK = 3,
     STAGE_ZC = 4,
-    STAGE_COMP_EXTRACTOR = 5
+    STAGE_COMP_EXTRACTOR = 5,
+    STAGE_SWITCH = 6,
 };
 
 mp_obj_t openearable_create_processing_pipeline(mp_obj_t name) {
@@ -291,6 +293,8 @@ int get_stage_info(mp_obj_t stage_obj,
     return 0;
 }
 
+// MARK: - Stage builder
+
 int build_processing_stage(mp_obj_t stage, SensorProcessingStage *&out_stage) {
     LOG_DBG("Building processing stage");
 
@@ -328,9 +332,11 @@ int build_processing_stage(mp_obj_t stage, SensorProcessingStage *&out_stage) {
         return 0;
     }
     case STAGE_PEAK: {
-        if (len < 1) return -EINVAL;
+        if (len < 3) return -EINVAL;
         enum ParseType parse_type = (ParseType)mp_obj_get_int(arr[0]);
-        out_stage = new PeakDetectorStage(parse_type);
+        float eps = mp_obj_get_float(arr[1]);
+        int maxOpen = mp_obj_get_int(arr[2]);
+        out_stage = new PeakDetectorStage(parse_type, eps, maxOpen);
         return 0;
     }
     case STAGE_ZC: {
@@ -344,6 +350,14 @@ int build_processing_stage(mp_obj_t stage, SensorProcessingStage *&out_stage) {
         enum ParseType parse_type = (ParseType)mp_obj_get_int(arr[0]);
         int comp_offset = mp_obj_get_int(arr[1]);
         out_stage = new SensorComponentExtractor(comp_offset, parse_type);
+        return 0;
+    }
+    case STAGE_SWITCH: {
+        if (len < 3) return -EINVAL;
+        enum ParseType parse_type = (ParseType)mp_obj_get_int(arr[0]);
+        float low_thresh = mp_obj_get_float(arr[1]);
+        float high_thresh = mp_obj_get_float(arr[2]);
+        out_stage = new SwitchStage(parse_type, low_thresh, high_thresh);
         return 0;
     }
     default:
