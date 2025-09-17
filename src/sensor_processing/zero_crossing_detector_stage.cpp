@@ -1,28 +1,13 @@
 #include "zero_crossing_detector_stage.h"
 #include <cstring>            // memcpy
 #include "zephyr/logging/log.h"
+#include "processing_utils.h"
 LOG_MODULE_REGISTER(zero_crossing_detector_stage, LOG_LEVEL_WRN);
 
 static inline int8_t sign_crossing(double last, double cur) {
     if (last < 0 && cur > 0)  return  1; // rising through zero
     if (last > 0 && cur < 0)  return -1; // falling through zero
     return 0;
-}
-
-static inline float decode_as_float(ParseType t, const uint8_t* p) {
-    switch (t) {
-        case PARSE_TYPE_UINT8:  { uint8_t  v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
-        case PARSE_TYPE_INT8:   { int8_t   v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
-        case PARSE_TYPE_UINT16: { uint16_t v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
-        case PARSE_TYPE_INT16:  { int16_t  v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
-        case PARSE_TYPE_UINT32: { uint32_t v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
-        case PARSE_TYPE_INT32:  { int32_t  v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
-        case PARSE_TYPE_FLOAT:  { float    v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
-        case PARSE_TYPE_DOUBLE: { double   v; std::memcpy(&v, p, sizeof(v)); return (float)v; }
-        default:
-            LOG_ERR("Unsupported parse type %d", t);
-            return 0.0;
-    }
 }
 
 ZeroCrossingDetectorStage::ZeroCrossingDetectorStage(ParseType pt)
