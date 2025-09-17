@@ -11,7 +11,7 @@ LOG_MODULE_REGISTER(call_callback, LOG_LEVEL_DBG);
 #include "py/obj.h"
 #include "py/runtime.h"
 #include "py/objlist.h"
-#include "SensorScheme.h"      // your C structs (SensorScheme, SensorComponentGroup, ...)
+#include "SensorScheme.h"
 
 // ---- Mutex (statically initialized) ----
 K_MUTEX_DEFINE(call_mutex);
@@ -170,11 +170,17 @@ static mp_obj_t parse_data(const struct SensorScheme *scheme, const struct senso
 
 // Scheduled thunk: arg carries a pointer to cb_ctx as an integer object
 static mp_obj_t call_cb_py(mp_obj_t arg) {
+    k_mutex_lock(&call_mutex, K_FOREVER);
+    if (!ctx) {
+        LOG_ERR("call_cb_py: no context");
+        return mp_const_none;
+    }
     mp_obj_t d = parse_data(ctx->scheme, &ctx->sd);
-    // mp_obj_t d = mp_const_none;
     mp_call_function_1(ctx->cb, d);
 
-    k_free(ctx);                        // only the context was heap-allocated
+    k_free(ctx);
+    ctx = NULL;
+    k_mutex_unlock(&call_mutex);
     return mp_const_none;
 }
 static MP_DEFINE_CONST_FUN_OBJ_1(call_cb_py_obj, call_cb_py);
@@ -186,6 +192,7 @@ void call_callback(mp_obj_t callback,
     k_mutex_lock(&call_mutex, K_FOREVER);
     ctx = (struct cb_ctx *)k_malloc(sizeof(struct cb_ctx));
     if (!ctx) {
+        k_mutex_unlock(&call_mutex);
         LOG_ERR("ctx alloc failed");
         return;
     }
@@ -203,9 +210,8 @@ void call_callback(mp_obj_t callback,
     if (n > 0) {
         memcpy(ctx->sd.data, data->data, n);
     }
-    ctx->sd.size = n;                                 // reflect the truncated/copied size
+    ctx->sd.size = n;
 
     mp_sched_schedule(MP_OBJ_FROM_PTR(&call_cb_py_obj), mp_const_none);
-                    //   mp_obj_new_int_from_ull((uintptr_t)ctx));
     k_mutex_unlock(&call_mutex);
 }
