@@ -2,119 +2,189 @@ import openearable as oe
 import processing as proc
 from processing import Source, Sink
 import time
-
 import app_core
 
 app_info = app_core.AppInfo("Heart Rate App", "A simple heart rate app using PPG data", app_core.AppType.DAEMON)
 
-class Peak:
-    def __init__(self, timestamp: int, sign: int, prominence: float):
-        self.timestamp = timestamp
-        self.sign = sign
-        self.prominence = prominence
+# =======================
+# Tiny, streaming state
+# =======================
+# (All timestamps are µs)
 
-    def __repr__(self):
-        return "Peak(ts={}, sign={}, prom={})".format(self.timestamp, self.sign, self.prominence)
+# Tunables
+_MIN_PERIOD_US   = 260_000     # ~230 bpm upper bound
+_MAX_PERIOD_US   = 2_000_000   # ~30 bpm lower bound
+_REFRACTORY_US   = 280_000     # ignore closely spaced ZCs (ringing)
+_MISSED_FACTOR   = 1.75        # >1.75x median → assume one missed beat (split)
+_SHORT_FACTOR    = 0.5         # <0.5x median → drop as duplicate/ringing
+_PROM_FRAC       = 0.30        # peak must be >= frac * median prominence
+IBI_WIN          = 9           # small sorted IBI buffer
+PROM_WIN         = 15          # small sorted prominence buffer
 
-class ZeroCrossing:
-    def __init__(self, timestamp: int, value: int):
-        self.timestamp = timestamp
-        self.value = value
-
-    def __repr__(self):
-        return "ZeroCrossing(ts={}, value={})".format(self.timestamp, self.value)
-
-zero_crossings: list[ZeroCrossing] = []
-peaks: list[Peak] = []
-
+# Globals (kept minimal)
 is_in_ear = False
+_last_neg_zc_ts = None
+_last_counted_neg_zc_ts = None      # for refractory
+_had_good_peak_since_last_negzc = False
 
-def reset(timestamp: int):
-    global zero_crossings, peaks
-    zero_crossings = [zc for zc in zero_crossings if zc.timestamp >= timestamp]
-    peaks = [p for p in peaks if p.timestamp >= timestamp]
+_ibi_sorted = []     # sorted list of recent IBIs (µs), max len IBI_WIN
+_prom_sorted = []    # sorted list of recent prominences, max len PROM_WIN
 
-def fill_zero_crossings(sensor_value: oe.SensorValue):
-    if not is_in_ear:
+# =======================
+# Small helpers (no imports)
+# =======================
+def _insert_sorted(buf, val, maxlen):
+    # insertion sort into small list; keeps ascending order
+    n = len(buf)
+    # fast paths
+    if n == 0:
+        buf.append(val)
         return
-    global zero_crossings
-    zero_crossings.append(ZeroCrossing(sensor_value.timestamp, sensor_value.groups[0].components[0].value))
-    
-def fill_peaks(sensor_value: oe.SensorValue):
-    if not is_in_ear:
-        return
-    global peaks
-    peaks.append(Peak(sensor_value.timestamp, sensor_value.groups[0].components[1].value, sensor_value.groups[0].components[2].value))
+    if val >= buf[-1]:
+        buf.append(val)
+    else:
+        i = 0
+        while i < n and buf[i] <= val:
+            i += 1
+        buf.insert(i, val)
+    if len(buf) > maxlen:
+        # drop the farthest outlier (choose side by distance to median)
+        # but to keep it simple & cheap: pop from ends evenly
+        # prefer removing extremes—remove whichever end is farther from current median
+        med = _median(buf)
+        if abs(buf[0] - med) > abs(buf[-1] - med):
+            buf.pop(0)
+        else:
+            buf.pop()
 
-def detect_inear(sensor_value: oe.SensorValue):
+def _median(buf):
+    n = len(buf)
+    if n == 0:
+        return None
+    m = n >> 1      # n//2 (but very fast)
+    if n & 1:
+        return buf[m]
+    return (buf[m - 1] + buf[m]) / 2.0
+
+def _clear_state_from(ts_cutoff_us):
+   _ibi_sorted.clear()
+   _prom_sorted.clear()
+
+def reset(ts):
+    # on re-insert ear, reset minimal beat sequence state but keep windows
+    global _last_neg_zc_ts, _last_counted_neg_zc_ts, _had_good_peak_since_last_negzc
+    _last_neg_zc_ts = None
+    _last_counted_neg_zc_ts = None
+    _had_good_peak_since_last_negzc = False
+    _clear_state_from(ts)
+
+# =======================
+# Sinks (tiny, allocation-free)
+# =======================
+def detect_inear(sensor_value):
+    # Using SwitchStage output: component[1].value > 0 means in-ear
     global is_in_ear
     is_in_ear = sensor_value.groups[0].components[1].value > 0
+    print("Detected {} ear with skin temp {:.1f}C".format("in" if is_in_ear else "out of", sensor_value.groups[0].components[0].value))
     if is_in_ear:
-        print("In-ear detected")
         reset(sensor_value.timestamp)
-    else:
-        print("Not in-ear")
 
-class EventType:
-    POS_PEAK = 0
-    NEG_PEAK = 1
-    POS_ZERO_CROSS = 2
-    NEG_ZERO_CROSS = 3
+def fill_peaks(sensor_value):
+    # PeakDetector output convention:
+    #   components[1] = sign (+1 / -1)
+    #   components[2] = prominence (float)
+    if not is_in_ear:
+        return
+    prom = sensor_value.groups[0].components[2].value
+    # maintain rolling sorted prominence buffer
+    _insert_sorted(_prom_sorted, prom, PROM_WIN)
 
-def get_event_type(event):
-    if isinstance(event, Peak):
-        return EventType.POS_PEAK if event.sign > 0 else EventType.NEG_PEAK
-    elif isinstance(event, ZeroCrossing):
-        return EventType.POS_ZERO_CROSS if event.value > 0 else EventType.NEG_ZERO_CROSS
-    else:
-        raise ValueError("Unknown event type")
+    # if peak is strong enough compared to recent median, arm the “good peak” flag
+    med_prom = _median(_prom_sorted)
+    if (med_prom is None) or (prom >= _PROM_FRAC * med_prom):
+        # peak occurred and is good → allow next negative ZC to close a beat
+        # (we don’t care about sign here; either can indicate a physiologic peak)
+        global _had_good_peak_since_last_negzc
+        _had_good_peak_since_last_negzc = True
 
-def calc_hr(peaks: list[Peak], zero_crossings: list[ZeroCrossing]):
-    # merge peaks and zero crossings into one timeline
-    if len(peaks) < 2 or len(zero_crossings) < 2:
+def fill_zero_crossings(sensor_value):
+    # ZeroCrossingDetector output:
+    #   components[0] = value (+1 or -1)
+    if not is_in_ear:
         return
 
-    events = peaks + zero_crossings
-    events.sort(key=lambda e: e.timestamp)
+    val = sensor_value.groups[0].components[0].value
+    if val >= 0:
+        return  # only use negative crossings for beat boundaries
 
-    # filter out events that are not part of a peak-to-peak cycle
-    filtered_events = []
-    last_event_type = None
-    for event in events:
-        event_type = get_event_type(event)
-        if last_event_type is None:
-            if event_type in (EventType.POS_PEAK, EventType.NEG_PEAK):
-                filtered_events.append(event)
-                last_event_type = event_type
-        else:
-            if (last_event_type == EventType.POS_PEAK and event_type == EventType.NEG_ZERO_CROSS) or \
-            (last_event_type == EventType.NEG_PEAK and event_type == EventType.POS_ZERO_CROSS):
-                filtered_events.append(event)
-                last_event_type = event_type
-            elif (last_event_type == EventType.NEG_ZERO_CROSS and event_type == EventType.NEG_PEAK) or \
-                (last_event_type == EventType.POS_ZERO_CROSS and event_type == EventType.POS_PEAK):
-                filtered_events.append(event)
-                last_event_type = event_type
+    ts = sensor_value.timestamp
 
-    print("All events:", events)
-    print("Filtered events:", filtered_events)
+    global _last_counted_neg_zc_ts
+    if _last_counted_neg_zc_ts is not None:
+        if (ts - _last_counted_neg_zc_ts) < _REFRACTORY_US:
+            return  # refractory: suppress ringing
 
-    # calculate the avg timedifference between the negative zero crossings
-    negative_crossings_timestamps = [e.timestamp for e in filtered_events if isinstance(e, ZeroCrossing) and e.value < 0]
+    global _last_neg_zc_ts, _had_good_peak_since_last_negzc
 
-    if len(negative_crossings_timestamps) < 2:
+    # Need a good peak between successive neg ZCs to accept this beat
+    if not _had_good_peak_since_last_negzc:
+        _last_neg_zc_ts = ts
+        _last_counted_neg_zc_ts = ts
         return
 
-    avg_dt = sum(negative_crossings_timestamps[i] - negative_crossings_timestamps[i - 1] for i in range(1, len(negative_crossings_timestamps))) / (len(negative_crossings_timestamps) - 1)
-    bpm = 60.0 / (avg_dt / 1000000.0)  # convert µs to s
+    if _last_neg_zc_ts is None:
+        _last_neg_zc_ts = ts
+        _last_counted_neg_zc_ts = ts
+        _had_good_peak_since_last_negzc = False
+        return
 
-    print("Estimated BPM: {:.2f}".format(bpm))
+    dt = ts - _last_neg_zc_ts
+    # period sanity
+    if dt < _MIN_PERIOD_US or dt > _MAX_PERIOD_US:
+        _last_neg_zc_ts = ts
+        _last_counted_neg_zc_ts = ts
+        _had_good_peak_since_last_negzc = False
+        return
 
-    reset(filtered_events[-1].timestamp)
+    # Base median IBI (use current window; if empty, seed with dt)
+    med = _median(_ibi_sorted)
+    if med is None:
+        _insert_sorted(_ibi_sorted, dt, IBI_WIN)
+        _last_neg_zc_ts = ts
+        _last_counted_neg_zc_ts = ts
+        _had_good_peak_since_last_negzc = False
+        # Need a few beats before reporting
+        return
 
+    # Missed-beat & short-duplicate handling
+    if dt > _MISSED_FACTOR * med and (dt >> 1) >= _MIN_PERIOD_US:
+        # split into two beats
+        half = dt / 2.0
+        _insert_sorted(_ibi_sorted, half, IBI_WIN)
+        _insert_sorted(_ibi_sorted, half, IBI_WIN)
+    elif dt < _SHORT_FACTOR * med:
+        # likely duplicate / ringing → drop
+        pass
+    else:
+        _insert_sorted(_ibi_sorted, dt, IBI_WIN)
+
+    # Compute BPM from robust central tendency:
+    # Use median; optionally a tiny trimmed mean around it without allocations
+    med = _median(_ibi_sorted)
+    if med is not None:
+        bpm = 60.0 * 1_000_000.0 / med
+        # print ONLY BPM int
+        print("HR: {:3d} bpm".format(int(bpm)))
+
+    _last_neg_zc_ts = ts
+    _last_counted_neg_zc_ts = ts
+    _had_good_peak_since_last_negzc = False
+
+# =======================
+# Main (setup pipelines, run forever)
+# =======================
 def main():
-    print("Starting Heart Rate App")
-
+    # minimal prints to reduce heap churn
     oe.init_sensors()
     ppg = oe.get_sensor(4)
     skin_temp = [s for s in oe.get_sensors() if s.name == "Skin Temperature Sensor"][0]
@@ -123,14 +193,18 @@ def main():
     p.source('ppg', ppg)
     p.stage(proc.ComponentExtractor('green_ex', group='PHOTOPLETHYSMOGRAPHY', component='GREEN'))
     p.connect('ppg', 'green_ex')
-    p.stage(proc.BiQuadFilter('filter', stages=2, coeffs=[[ 0.01658193,  0.03316386,  0.01658193,         -1.62885077,  0.69946348], [ 1.,         -2.,          1.,                   -1.95738904,  0.95853169]]))
+    p.stage(proc.BiQuadFilter('filter', stages=2, coeffs=[
+        [ 0.01658193,  0.03316386,  0.01658193, -1.62885077,  0.69946348],
+        [ 1.0,        -2.0,         1.0,        -1.95738904,  0.95853169]
+    ]))
     p.connect('green_ex', 'filter')
     p.stage(proc.ZeroCrossingDetector('zero_cross'))
     p.connect('filter', 'zero_cross')
     p.sink('zero_cross_out', 'zero_cross', fill_zero_crossings)
+
     p.stage(proc.PeakDetector('peaks', eps=0.0, maxOpen=3))
     p.connect('filter', 'peaks')
-    p.sink('accel_peak_out', 'peaks', fill_peaks)
+    p.sink('peaks_out', 'peaks', fill_peaks)
 
     p.build()
     ppg.configure(3, [4])
@@ -143,9 +217,3 @@ def main():
 
     in_ear_pipe.build()
     skin_temp.configure(1, [4])
-
-    while True:
-        # check if lists have enough data
-        if len(peaks) >= 10 and len(zero_crossings) >= 10:
-            calc_hr(peaks, zero_crossings)
-        time.sleep(1)
