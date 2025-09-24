@@ -63,29 +63,6 @@ _adv_payload = None
 _device_name = "OpenEarable HR"
 _body_sensor_location = 0x06  # "Other" (no specific "ear" code in spec)
 
-def _adv_payload_make(name=None, services_16=None):
-    if name is None and not services_16:
-        return b"\x02\x01\x06"  # flags only
-    payload = bytearray()
-
-    def _append(adv_type, value_bytes):
-        payload.extend((len(value_bytes) + 1, adv_type))
-        payload.extend(value_bytes)
-
-    if name:
-        _append(0x09, name.encode())  # Complete Local Name
-
-    if services_16:
-        # Complete List of 16-bit Service Class UUIDs
-        sv = bytearray()
-        for u16 in services_16:
-            sv.extend(struct.pack("<H", u16))
-        if sv:
-            _append(0x03, sv)
-
-    # Could also add appearance if desired (Generic Heart Rate Sensor = 0x0341)
-    return bytes(payload)
-
 def _hrs_irq(event, data):
     global _connections
     if event == _IRQ_CENTRAL_CONNECT:
@@ -114,19 +91,8 @@ def _hrs_register():
     # Set BSL value
     ble.gatts_write(_bsl_handle, bytes([_body_sensor_location]))
 
-def _hrs_advertise(interval_us=250_000):
-    # (Re)start advertising the HRS with name
-    global _adv_payload
-    if _adv_payload is None:
-        _adv_payload = _adv_payload_make(name=_device_name, services_16=[_UUID_HRS])
-    try:
-        ble.gap_advertise(interval_us, adv_data=_adv_payload)
-    except Exception as e:
-        # Keep app running even if advertising fails once
-        print("HRS advertise error:", e)
-
-def hrs_init(device_name="OpenEarable HR", body_sensor_location=0x06):
-    """Initialize BLE and the Heart Rate Service (functional style)."""
+def hrs_init(device_name="OpenEarable HR", body_sensor_location=0x05):
+    """Initialize BLE and the Heart Rate Service."""
     global ble, _hrs_enabled, _device_name, _body_sensor_location, _connections, _adv_payload
     if bluetooth is None:
         print("BLE not available in this firmware.")
@@ -144,7 +110,6 @@ def hrs_init(device_name="OpenEarable HR", body_sensor_location=0x06):
         ble.irq(_hrs_irq)
 
         _hrs_register()
-        _hrs_advertise()
         _hrs_enabled = True
         print("HRS initialized (UUID 0x180D); advertising…")
     except Exception as e:
@@ -257,6 +222,8 @@ def detect_inear(sensor_value):
     print("Detected {} ear with skin temp {:.1f}C".format("in" if is_in_ear else "out of", sensor_value.groups[0].components[0].value))
     if is_in_ear:
         reset(sensor_value.timestamp)
+    else:
+        hrs_notify(bpm_int=0, ibi_us=None, contact_detected=False)  # notify out-of-ear
 
 def fill_peaks(sensor_value):
     # PeakDetector output convention:
