@@ -16,6 +16,11 @@
 #include "zero_crossing_detector_stage.h"
 #include "peak_detector_stage.h"
 #include "biquad_filter_stage.h"
+#include "adding_stage.h"
+#include "multiply_stage.h"
+#include "and_stage.h"
+#include "not_stage.h"
+#include "if_stage.h"
 #include "sensor_component_extractor.h"
 #include "switch_stage.h"
 
@@ -48,6 +53,11 @@ enum ProcessingStageKind {
     STAGE_ZC = 4,
     STAGE_COMP_EXTRACTOR = 5,
     STAGE_SWITCH = 6,
+    STAGE_ADDING = 7,
+    STAGE_MULTIPLYING = 8,
+    STAGE_AND = 9,
+    STAGE_NOT = 10,
+    STAGE_IF = 11,
 };
 
 mp_obj_t openearable_create_processing_pipeline(mp_obj_t name) {
@@ -266,6 +276,95 @@ int build_biquad_filter_stage(mp_obj_t parse_type_obj,
     return 0;
 }
 
+int build_adding_stage(mp_obj_t in_port_count_obj,
+                       mp_obj_t parse_type_obj,
+                       mp_obj_t sync_channels_obj,
+                       mp_obj_t threshold_us_obj,
+                       SensorProcessingStage *&out_stage) {
+
+    if (!MP_OBJ_IS_INT(in_port_count_obj)) {
+        LOG_ERR("Input port count must be an integer");
+        return -EINVAL;
+    }
+
+    if (!MP_OBJ_IS_INT(parse_type_obj)) {
+        LOG_ERR("Parse type must be an integer");
+        return -EINVAL;
+    }
+
+    size_t in_port_count = (size_t)mp_obj_get_int(in_port_count_obj);
+    if (in_port_count < 2) {
+        LOG_ERR("Input port count must be at least 2");
+        return -EINVAL;
+    }
+    enum ParseType parse_type = (ParseType)mp_obj_get_int(parse_type_obj);
+    bool sync_channels = mp_obj_is_true(sync_channels_obj);
+    uint64_t threshold_us = (uint64_t)mp_obj_get_int(threshold_us_obj);
+
+    out_stage = new AddingStage(in_port_count, parse_type, sync_channels, threshold_us);
+    return 0;
+}
+
+int build_multiply_stage(mp_obj_t in_port_count_obj,
+                       mp_obj_t parse_type_obj,
+                       mp_obj_t sync_channels_obj,
+                       mp_obj_t threshold_us_obj,
+                       SensorProcessingStage *&out_stage) {
+
+    if (!MP_OBJ_IS_INT(in_port_count_obj)) {
+        LOG_ERR("Input port count must be an integer");
+        return -EINVAL;
+    }
+
+    if (!MP_OBJ_IS_INT(parse_type_obj)) {
+        LOG_ERR("Parse type must be an integer");
+        return -EINVAL;
+    }
+
+    size_t in_port_count = (size_t)mp_obj_get_int(in_port_count_obj);
+    if (in_port_count < 2) {
+        LOG_ERR("Input port count must be at least 2");
+        return -EINVAL;
+    }
+    enum ParseType parse_type = (ParseType)mp_obj_get_int(parse_type_obj);
+    bool sync_channels = mp_obj_is_true(sync_channels_obj);
+    uint64_t threshold_us = (uint64_t)mp_obj_get_int(threshold_us_obj);
+
+    out_stage = new MultiplyStage(in_port_count, parse_type, sync_channels, threshold_us);
+    return 0;
+}
+
+int build_and_stage(mp_obj_t in_port_count_obj,
+                    mp_obj_t sync_channels_obj,
+                    mp_obj_t threshold_us_obj,
+                    SensorProcessingStage *&out_stage) {
+    if (!MP_OBJ_IS_INT(in_port_count_obj)) {
+        LOG_ERR("Input port count must be an integer");
+        return -EINVAL;
+    }
+
+    size_t in_port_count = (size_t)mp_obj_get_int(in_port_count_obj);
+    if (in_port_count < 2) {
+        LOG_ERR("Input port count must be at least 2");
+        return -EINVAL;
+    }
+    bool sync_channels = mp_obj_is_true(sync_channels_obj);
+    uint64_t threshold_us = (uint64_t)mp_obj_get_int(threshold_us_obj);
+
+    out_stage = new AndStage(in_port_count, sync_channels, threshold_us);
+    return 0;
+}
+
+int build_if_stage(mp_obj_t sync_channels_obj,
+                    mp_obj_t threshold_us_obj,
+                    SensorProcessingStage *&out_stage) {
+    bool sync_channels = mp_obj_is_true(sync_channels_obj);
+    uint64_t threshold_us = (uint64_t)mp_obj_get_int(threshold_us_obj);
+
+    out_stage = new IfStage(sync_channels, threshold_us);
+    return 0;
+}
+
 int get_stage_info(mp_obj_t stage_obj,
                    int *out_kind,
                    const char **out_name,
@@ -359,6 +458,30 @@ int build_processing_stage(mp_obj_t stage, SensorProcessingStage *&out_stage) {
         float high_thresh = mp_obj_get_float(arr[2]);
         out_stage = new SwitchStage(parse_type, low_thresh, high_thresh);
         return 0;
+    }
+    case STAGE_ADDING: {
+        if (len < 4) return -EINVAL;
+        ret = build_adding_stage(arr[0], arr[1], arr[2], arr[3], out_stage);
+        return ret;
+    }
+    case STAGE_MULTIPLYING: {
+        if (len < 4) return -EINVAL;
+        ret = build_multiply_stage(arr[0], arr[1], arr[2], arr[3], out_stage);
+        return ret;
+    }
+    case STAGE_AND: {
+        if (len < 3) return -EINVAL;
+        ret = build_and_stage(arr[0], arr[1], arr[2], out_stage);
+        return ret;
+    }
+    case STAGE_NOT: {
+        out_stage = new NotStage();
+        return 0;
+    }
+    case STAGE_IF: {
+        if (len < 2) return -EINVAL;
+        ret = build_if_stage(arr[0], arr[1], out_stage);
+        return ret;
     }
     default:
         LOG_ERR("Unknown stage kind: %d", kind);

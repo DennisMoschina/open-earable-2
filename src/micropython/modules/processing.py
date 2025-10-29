@@ -10,6 +10,11 @@ class NodeKind:
     ZERO_CROSSING = 4
     COMPONENT_EXTRACTOR = 5
     SWITCH = 6
+    ADDING = 7
+    MULTIPLYING = 8
+    AND = 9
+    NOT = 10
+    IF = 11
 
 class Node:
     name: str
@@ -183,7 +188,7 @@ class SwitchStage(Node):
         scheme.groups[0].components.append(SensorComponent(
             name="switch",
             parse_type=ParseType.UINT8,
-            unit="switch"
+            unit="boolean"
         ))
         return scheme
 
@@ -195,6 +200,112 @@ class SwitchStage(Node):
 
     def build_args(self, in_schemes: list[SensorScheme]) -> tuple:
         return (in_schemes[0].groups[0].components[0].parse_type, self.hysteresis_low, self.hysteresis_high)
+    
+class AddingStage(Node):
+    def __init__(self, name: str, in_port_count: int = 2, sync_timestamps: bool = False, sync_threshold_us: int = 0):
+        super().__init__(name=name, kind=NodeKind.ADDING, in_port_count=in_port_count)
+        self.sync_timestamps = sync_timestamps
+        self.sync_threshold_us = sync_threshold_us
+
+    def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme:
+        if len(schemes) != self.in_port_count:
+            raise ValueError("AddingStage requires exactly {} input schemes.".format(self.in_port_count))
+        ref_parse_type = schemes[0].groups[0].components[0].parse_type
+        for scheme in schemes:
+            if len(scheme.groups) != 1:
+                raise ValueError("AddingStage requires exactly one group in each input scheme.")
+            if len(scheme.groups[0].components) != 1:
+                raise ValueError("AddingStage requires exactly one component in the input group of each scheme.")
+            if scheme.groups[0].components[0].parse_type != ref_parse_type:
+                raise ValueError("All input components must have the same parse type.")
+        scheme = schemes[0].copy()
+        return scheme
+
+    def build_args(self, in_schemes: list[SensorScheme]) -> tuple:
+        return (self.in_port_count, in_schemes[0].groups[0].components[0].parse_type, self.sync_timestamps, self.sync_threshold_us)
+    
+class MultiplyStage(Node):
+    def __init__(self, name: str, in_port_count: int = 2, sync_timestamps: bool = False, sync_threshold_us: int = 0):
+        super().__init__(name=name, kind=NodeKind.MULTIPLYING, in_port_count=in_port_count)
+        self.sync_timestamps = sync_timestamps
+        self.sync_threshold_us = sync_threshold_us
+
+    def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme:
+        if len(schemes) != self.in_port_count:
+            raise ValueError("MultiplyStage requires exactly {} input schemes.".format(self.in_port_count))
+        ref_parse_type = schemes[0].groups[0].components[0].parse_type
+        for scheme in schemes:
+            if len(scheme.groups) != 1:
+                raise ValueError("MultiplyStage requires exactly one group in each input scheme.")
+            if len(scheme.groups[0].components) != 1:
+                raise ValueError("MultiplyStage requires exactly one component in the input group of each scheme.")
+            if scheme.groups[0].components[0].parse_type != ref_parse_type:
+                raise ValueError("All input components must have the same parse type.")
+        scheme = schemes[0].copy()
+        return scheme
+
+    def build_args(self, in_schemes: list[SensorScheme]) -> tuple:
+        return (self.in_port_count, in_schemes[0].groups[0].components[0].parse_type, self.sync_timestamps, self.sync_threshold_us)
+    
+class AndStage(Node):
+    def __init__(self, name: str, in_port_count: int = 2, sync_timestamps: bool = False, sync_threshold_us: int = 0):
+        super().__init__(name=name, kind=NodeKind.MULTIPLYING, in_port_count=in_port_count)
+        self.sync_timestamps = sync_timestamps
+        self.sync_threshold_us = sync_threshold_us
+
+    def scheme_transform(self, schemes):
+        for scheme in schemes:
+            if len(scheme.groups) != 1:
+                raise ValueError("MultiplyStage requires exactly one group in each input scheme.")
+            if len(scheme.groups[0].components) != 1:
+                raise ValueError("MultiplyStage requires exactly one component in the input group of each scheme.")
+            if scheme.groups[0].components[0].parse_type != ParseType.UINT8:
+                raise ValueError("All input components must have ParseType.UINT8.")
+        return schemes[0].copy()
+    
+    def build_args(self, in_schemes):
+        return (self.in_port_count, self.sync_timestamps, self.sync_threshold_us)
+
+class NotStage(Node):
+    def __init__(self, name: str):
+        super().__init__(name=name, kind=NodeKind.NOT, in_port_count=1)
+
+    def scheme_transform(self, schemes):
+        if len(schemes) != 1:
+            raise ValueError("NotStage requires exactly one input scheme.")
+        scheme = schemes[0]
+        if len(scheme.groups) != 1:
+            raise ValueError("NotStage requires exactly one group in the input scheme.")
+        if len(scheme.groups[0].components) != 1:
+            raise ValueError("NotStage requires exactly one component in the input group.")
+        if scheme.groups[0].components[0].parse_type != ParseType.UINT8:
+            raise ValueError("Input component must have ParseType.UINT8.")
+        return scheme.copy()
+    
+    def build_args(self, in_schemes):
+        return ()
+    
+class IfStage(Node):
+    def __init__(self, name: str, sync_timestamps: bool = False, sync_threshold_us: int = 0):
+        super().__init__(name=name, kind=NodeKind.IF, in_port_count=2)
+        self.sync_timestamps = sync_timestamps
+        self.sync_threshold_us = sync_threshold_us
+
+    def scheme_transform(self, schemes: list[SensorScheme]) -> SensorScheme:
+        if len(schemes) != 2:
+            raise ValueError("IfStage requires exactly two input schemes.")
+        cond_scheme = schemes[0]
+        if len(cond_scheme.groups) != 1:
+            raise ValueError("IfStage condition input requires exactly one group.")
+        if len(cond_scheme.groups[0].components) != 1:
+            raise ValueError("IfStage condition input requires exactly one component, but got the following {}.".format([c.name for c in cond_scheme.groups[0].components]))
+        if cond_scheme.groups[0].components[0].parse_type != ParseType.UINT8:
+            raise ValueError("IfStage condition input component must have ParseType.UINT8.")
+        then_scheme = schemes[1]
+        return then_scheme.copy()
+    
+    def build_args(self, in_schemes):
+        return (self.sync_timestamps, self.sync_threshold_us)
 
 class Edge:
     src: Node
@@ -312,14 +423,17 @@ class Pipeline:
                 continue
             # collect input schemes in port order
             in_edges = [e for e in self._edges if e.dst is n]
-            in_edges = sorted(in_edges, key=lambda e: getattr(e, "dst_port", 0))
+            in_edges = sorted(in_edges, key=lambda e: getattr(e, "dst_port", 0), reverse=True)
             in_schemes = []
             for e in in_edges:
                 s = out.get(e.src)
                 if s is None:
                     raise ValueError(f"Unresolved input scheme for edge {e.src.name} -> {n.name}")
                 in_schemes.append(s.copy())
-            out[n] = n.scheme_transform(in_schemes)
+            try:
+                out[n] = n.scheme_transform(in_schemes)
+            except Exception as e:
+                raise ValueError(f"Error transforming scheme at node {n.name}: {e}")
             if out[n] is None:
                 raise ValueError("Schema mismatch at node {}".format(n.name))
             
