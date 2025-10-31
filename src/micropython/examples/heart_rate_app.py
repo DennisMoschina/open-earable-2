@@ -1,23 +1,16 @@
 import openearable as oe
 import processing as proc
-from processing import Source, Sink
-import time
 import app_core
 
-# ==== BLE (functional style like your App Launcher) ====
-try:
-    import bluetooth
-    from micropython import const
-    import struct
-except ImportError:
-    bluetooth = None  # If BLE isn't available in this firmware
+import bluetooth
+from micropython import const
+import struct
 
 app_info = app_core.AppInfo("Heart Rate App", "A simple heart rate app using PPG data", app_core.AppType.DAEMON)
 
 # =======================
 # Tiny, streaming state
 # =======================
-# (All timestamps are µs)
 
 # Tunables
 _MIN_PERIOD_US   = 260_000     # ~230 bpm upper bound
@@ -29,10 +22,10 @@ _PROM_FRAC       = 0.30        # peak must be >= frac * median prominence
 IBI_WIN          = 9           # small sorted IBI buffer
 PROM_WIN         = 15          # small sorted prominence buffer
 
-# Globals (kept minimal)
+# Globals
 is_in_ear = False
 _last_neg_zc_ts = None
-_last_counted_neg_zc_ts = None      # for refractory
+_last_counted_neg_zc_ts = None
 _had_good_peak_since_last_negzc = False
 
 _ibi_sorted = []     # sorted list of recent IBIs (µs), max len IBI_WIN
@@ -51,7 +44,6 @@ _UUID_BSL = 0x2A38
 # IRQ constants
 _IRQ_CENTRAL_CONNECT = const(1)
 _IRQ_CENTRAL_DISCONNECT = const(2)
-_IRQ_GATTS_WRITE = const(3)
 
 # Handles / state
 ble = None
@@ -61,7 +53,7 @@ _hrm_handle = None
 _bsl_handle = None
 _adv_payload = None
 _device_name = "OpenEarable HR"
-_body_sensor_location = 0x06  # "Other" (no specific "ear" code in spec)
+_body_sensor_location = 0x07
 
 def _hrs_irq(event, data):
     global _connections
@@ -72,8 +64,6 @@ def _hrs_irq(event, data):
     elif event == _IRQ_CENTRAL_DISCONNECT:
         conn_handle, _, _ = data
         _connections.discard(conn_handle)
-        _hrs_advertise()  # resume advertising on disconnect
-    # No writable chars here—no _IRQ_GATTS_WRITE handling needed
 
 def _hrs_register():
     # Register GATT service and chars
@@ -81,9 +71,7 @@ def _hrs_register():
     SERVICE = (
         bluetooth.UUID(_UUID_HRS),
         (
-            # Heart Rate Measurement: Notify + Read (read mirrors last notified value)
             (bluetooth.UUID(_UUID_HRM), bluetooth.FLAG_NOTIFY | bluetooth.FLAG_READ),
-            # Body Sensor Location: Read (0x06 = other)
             (bluetooth.UUID(_UUID_BSL), bluetooth.FLAG_READ),
         ),
     )
@@ -94,10 +82,6 @@ def _hrs_register():
 def hrs_init(device_name="OpenEarable HR", body_sensor_location=0x05):
     """Initialize BLE and the Heart Rate Service."""
     global ble, _hrs_enabled, _device_name, _body_sensor_location, _connections, _adv_payload
-    if bluetooth is None:
-        print("BLE not available in this firmware.")
-        _hrs_enabled = False
-        return
 
     _device_name = device_name
     _body_sensor_location = body_sensor_location
@@ -213,7 +197,7 @@ def reset(ts):
     _clear_state_from(ts)
 
 # =======================
-# Sinks (unchanged HR logic; only call hrs_notify)
+# Sinks
 # =======================
 def detect_inear(sensor_value):
     # Using SwitchStage output: component[1].value > 0 means in-ear
@@ -321,20 +305,30 @@ def fill_zero_crossings(sensor_value):
 # =======================
 def main():
     # ---- Init BLE Heart Rate Service (functional) ----
-    if bluetooth is not None:
-        hrs_init(device_name="OpenEarable HR", body_sensor_location=0x06)
-    else:
-        print("BLE not available in this firmware.")
-
-    # ---- Pipelines (unchanged math) ----
+    hrs_init(device_name="OpenEarable HR", body_sensor_location=0x06)
+    
+    # ---- Pipelines ----
     oe.init_sensors()
     ppg = oe.get_sensor(4)
     skin_temp = [s for s in oe.get_sensors() if s.name == "Skin Temperature Sensor"][0]
 
     p = proc.Pipeline('HR')
+
+    p.source('skin_temp', skin_temp)
+    p.stage(proc.SwitchStage('temp_switch', (32.0, 34.0)))
+    p.connect('skin_temp', 'temp_switch')
+    p.sink('in_ear_sink', 'temp_switch', detect_inear)
+
     p.source('ppg', ppg)
+
+    p.stage(proc.ComponentExtractor('in_ear', group='OPTICAL_TEMPERATURE_SENSOR', component='switch'))
+    p.connect('temp_switch', 'in_ear')
+    p.stage(proc.IfStage('cond_ppg'))
+    p.connect('in_ear', 'cond_ppg', src_port=0)
+    p.connect('ppg', 'cond_ppg', src_port=1)
+
     p.stage(proc.ComponentExtractor('green_ex', group='PHOTOPLETHYSMOGRAPHY', component='GREEN'))
-    p.connect('ppg', 'green_ex')
+    p.connect('cond_ppg', 'green_ex')
     p.stage(proc.BiQuadFilter('filter', stages=2, coeffs=[
         [ 0.01658193,  0.03316386,  0.01658193, -1.62885077,  0.69946348],
         [ 1.0,        -2.0,         1.0,        -1.95738904,  0.95853169]
@@ -349,13 +343,6 @@ def main():
     p.sink('peaks_out', 'peaks', fill_peaks)
 
     p.build()
+
     ppg.configure(3, [4])
-
-    in_ear_pipe = proc.Pipeline('InEar')
-    in_ear_pipe.source('skin_temp', skin_temp)
-    in_ear_pipe.stage(proc.SwitchStage('temp_switch', (32.0, 34.0)))
-    in_ear_pipe.connect('skin_temp', 'temp_switch')
-    in_ear_pipe.sink('in_ear_sink', 'temp_switch', detect_inear)
-
-    in_ear_pipe.build()
     skin_temp.configure(1, [4])
