@@ -60,7 +60,7 @@ def _hrs_irq(event, data):
     if event == _IRQ_CENTRAL_CONNECT:
         conn_handle, _, _ = data
         _connections.add(conn_handle)
-        # Advertising typically stops automatically on connect
+        # Advertising stops automatically on connect
     elif event == _IRQ_CENTRAL_DISCONNECT:
         conn_handle, _, _ = data
         _connections.discard(conn_handle)
@@ -142,7 +142,10 @@ def hrs_notify(bpm_int, ibi_us=None, contact_detected=False):
 
     # Mirror value to make it readable as well (optional but handy)
     try:
-        ble.gatts_write(_hrm_handle, bytes(buf))
+        print("HRS notify: {} bpm, IBI {} us, contact {}".format(bpm_int, ibi_us if ibi_us is not None else "N/A", contact_detected))
+        if _hrm_handle is None:
+            raise ValueError("_hrm_handle is None")
+        ble.gatts_write(_hrm_handle, bytes(buf), send_update=True)
     except Exception as e:
         print("HRS gatts_write error:", e)
 
